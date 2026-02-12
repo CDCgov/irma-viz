@@ -1,0 +1,12 @@
+[plots]
+density_average = true
+density_8 = true
+density_observed = true
+observed_8 = true
+coverage = true
+confidence = true
+
+[output]
+path = "out/plots.svg"
+width = 1200
+height = 800
