@@ -21,3 +21,14 @@ Plots can be toggled, and settings can be changed in `config.toml`. These defaul
 ### Example
 
 `./irma-viz --alleles-tsv alleles.tsv --min-aq 1.1 --min-f 1.2 --min-tcc 1.3 --min-conf 1.4`
+
+## Plots
+
+Currently, the plots from IRMA's `heuristics` are provided, with placeholders for the data. These feature:
+
+- Density of average allele quality (line plot)
+- Density to 8 (line plot)
+- Density of observed frequency to 10% (line plot)
+- Density of observed frequency to 0.008% (line plot)
+- Histogram of coverage
+- Histogram of confidence not machine error, non-zero
