@@ -1,13 +1,13 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data_records::ReadCountsData,
+    data::ReadCountsData,
     plots::{enabled_plots, load_config, render_svg_grid},
 };
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 mod config;
-mod data_records;
+mod data;
 mod plots;
 
 #[derive(Clone, Copy, Debug)]
@@ -48,10 +48,13 @@ fn main() -> Result<()> {
 
     println!("Wrote {} plot(s) to {}", enabled.len(), cfg.output.path);
 
-    let filename = "data/READ_COUNTS.txt";
+    let filename = "test_data/READ_COUNTS.txt";
     let read_counts_data = ReadCountsData::import_from_file(filename)
         .with_context(|| format!("Cannot import Read Counts data from: \'{}\'", filename))?;
-    let record_data = read_counts_data.record_data_map.get("4-A_NP").expect("ya beefed it");
+    let record_data = read_counts_data
+        .record_data_map
+        .get("4-A_NP")
+        .expect("ya beefed it");
     println!("{record_data:#?}");
     Ok(())
 }

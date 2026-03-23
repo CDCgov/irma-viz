@@ -1,6 +1,5 @@
 use core::option::Option;
 use std::{
-    char::MAX,
     collections::HashMap,
     fs::File,
     io::{BufReader, prelude::*},
@@ -61,13 +60,13 @@ impl ReadCountsData {
             )));
         }
 
-        let this_record = split_line[RECORD_COL].to_string();
-        let this_read = Some(
+        let record = split_line[RECORD_COL].to_string();
+        let read = Some(
             split_line[READS_COL]
                 .parse::<usize>()
                 .with_context("Failed to parse Read field.")?,
         );
-        let this_pattern = match split_line[PATTERNS_COL] {
+        let pattern = match split_line[PATTERNS_COL] {
             "NA" => None,
             _ => Some(
                 split_line[PATTERNS_COL]
@@ -75,7 +74,7 @@ impl ReadCountsData {
                     .with_context("Failed to parse Pattern field.")?,
             ),
         };
-        let this_paw = match split_line[PAIRSANDWINDOWS_COL] {
+        let pair_and_window = match split_line[PAIRSANDWINDOWS_COL] {
             "NA" => None,
             _ => Some(
                 split_line[PAIRSANDWINDOWS_COL]
@@ -85,10 +84,10 @@ impl ReadCountsData {
         };
 
         Ok(ReadCountLine {
-            record: this_record,
-            read: this_read,
-            pattern: this_pattern,
-            pair_and_window: this_paw,
+            record,
+            read,
+            pattern,
+            pair_and_window,
         })
     }
 }
