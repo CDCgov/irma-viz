@@ -1,6 +1,6 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::ReadCountsData,
+    data::{AllAllelesData, ReadCountsData},
     plots::{enabled_plots, load_config, render_svg_grid},
 };
 use anyhow::{Context, Result};
@@ -57,5 +57,12 @@ fn main() -> Result<()> {
         .get("4-A_NP")
         .expect("ya beefed it");
     println!("{record_data:#?}");
+
+    let filename2 = "test_data/A_PA-allAlleles.txt";
+    let all_alleles_data = AllAllelesData::import_from_file(filename2)
+        .with_context(|| format!("Cannot import All Alleles data from: \'{}\'", filename2))?;
+    let count_data = all_alleles_data.counts[0];
+    println!("this count: {count_data}");
+
     Ok(())
 }

@@ -7,6 +7,7 @@ use std::{
 use zoe::data::err::ResultWithErrorContext;
 
 // Header format for `READ_COUNTS.txt`
+// TODO: Docs
 const READ_COUNTS_HEADER: &str = "Record\tReads\tPatterns\tPairsAndWidows";
 const RECORD_COL: usize = 0;
 const READS_COL: usize = 1;
@@ -15,6 +16,7 @@ const PAIRSANDWINDOWS_COL: usize = 3;
 const MAX_COLS: usize = 4;
 
 #[derive(Debug)]
+/// TODO: Docs
 pub struct ReadCountLine {
     pub record: String,
     pub _read: Option<usize>,
@@ -22,11 +24,13 @@ pub struct ReadCountLine {
     pub _pair_and_window: Option<usize>,
 }
 #[derive(Debug)]
+/// TODO: Docs
 pub struct ReadCountsData {
     pub record_data_map: HashMap<String, ReadCountLine>,
 }
 
 impl ReadCountsData {
+    /// TODO: Docs
     pub fn import_from_file(filename: &str) -> std::io::Result<Self> {
         let mut read_counts_lines =
             BufReader::new(File::open(filename).with_context("Cannot open file")?).lines();
@@ -55,6 +59,7 @@ impl ReadCountsData {
         Ok(ReadCountsData { record_data_map })
     }
 
+    /// TODO: Docs
     fn parse_line(line: String) -> std::io::Result<ReadCountLine> {
         let split_line = line.split('\t').collect::<Vec<_>>();
         if split_line.len() < MAX_COLS {

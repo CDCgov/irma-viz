@@ -5,6 +5,7 @@ use std::{
 use zoe::data::err::ResultWithErrorContext;
 
 // Header format for `<gene>-allAlleles.txt`
+// TODO: Docs
 const ALL_ALLELES_HEADER: &str = "Reference_Name\tPosition\tAllele\tCount\tTotal\tFrequency\tAverage_Quality\tConfidenceNotMacErr\tPairedUB\tQualityUB\tAllele_Type";
 const REF_NAME_COL: usize = 0;
 const POS_COL: usize = 1;
@@ -19,41 +20,45 @@ const QUB_COL: usize = 9;
 const TYPE_COL: usize = 10;
 const MAX_COLS: usize = 11;
 
-enum AlleleType {
+/// TODO: Docs
+pub enum AlleleType {
     Consensus,
     Minority,
 }
 
+/// TODO: Docs
 struct AllAllelesLine {
     reference_name: String,
     position: usize,
-    allele: u8,
+    allele: Option<u8>,
     count: usize,
     total: usize,
     frequency: f64,
-    average_quality: f64,
-    confidence_not_mac_err: f64,
+    average_quality: Option<f64>,
+    confidence_not_mac_err: Option<f64>,
     paired_ub: f64,
     quality_ub: f64,
     allele_type: AlleleType,
 }
 
-struct AllAllelesData {
-    reference_name: String,
-    positions: Vec<usize>,
-    alleles: Vec<u8>,
-    counts: Vec<usize>,
-    totals: Vec<usize>,
-    frequencies: Vec<f64>,
-    average_qualities: Vec<f64>,
-    confidence_not_mac_errs: Vec<f64>,
-    paried_ubs: Vec<f64>,
-    quality_ubs: Vec<f64>,
-    allele_types: Vec<AlleleType>,
+/// TODO: Docs
+pub struct AllAllelesData {
+    pub reference_name: String,
+    pub positions: Vec<usize>,
+    pub alleles: Vec<Option<u8>>,
+    pub counts: Vec<usize>,
+    pub totals: Vec<usize>,
+    pub frequencies: Vec<f64>,
+    pub average_qualities: Vec<Option<f64>>,
+    pub confidence_not_mac_errs: Vec<Option<f64>>,
+    pub paried_ubs: Vec<f64>,
+    pub quality_ubs: Vec<f64>,
+    pub allele_types: Vec<AlleleType>,
 }
 
 impl AllAllelesData {
-    fn import_from_file(filename: &str) -> std::io::Result<Self> {
+    /// TODO: Docs
+    pub fn import_from_file(filename: &str) -> std::io::Result<Self> {
         let mut all_alleles_lines =
             BufReader::new(File::open(filename).with_context("Cannot open file")?).lines();
 
@@ -68,7 +73,7 @@ impl AllAllelesData {
             return Err(std::io::Error::other("File has no data."));
         };
         let first_all_alleles_line = Self::parse_line(first_all_alleles_line_str)
-            .with_context("Failed to parse line number 1")?;
+            .with_context("Failed to parse line number 2")?;
 
         let mut all_alleles_data = AllAllelesData {
             reference_name: first_all_alleles_line.reference_name,
@@ -91,7 +96,7 @@ impl AllAllelesData {
             }
 
             let all_alleles_line = Self::parse_line(line)
-                .with_context(format!("Failed to parse line number {}", line_num + 2))?;
+                .with_context(format!("Failed to parse line number {}", line_num + 3))?;
 
             if all_alleles_data.reference_name != all_alleles_line.reference_name {
                 return Err(std::io::Error::other(format!(
@@ -99,11 +104,32 @@ impl AllAllelesData {
                     line_num + 2
                 )));
             }
+            all_alleles_data.positions.push(all_alleles_line.position);
+            all_alleles_data.alleles.push(all_alleles_line.allele);
+            all_alleles_data.counts.push(all_alleles_line.count);
+            all_alleles_data.totals.push(all_alleles_line.total);
+            all_alleles_data
+                .frequencies
+                .push(all_alleles_line.frequency);
+            all_alleles_data
+                .average_qualities
+                .push(all_alleles_line.average_quality);
+            all_alleles_data
+                .confidence_not_mac_errs
+                .push(all_alleles_line.confidence_not_mac_err);
+            all_alleles_data.paried_ubs.push(all_alleles_line.paired_ub);
+            all_alleles_data
+                .quality_ubs
+                .push(all_alleles_line.quality_ub);
+            all_alleles_data
+                .allele_types
+                .push(all_alleles_line.allele_type);
         }
 
         Ok(all_alleles_data)
     }
 
+    /// TODO: Docs
     fn parse_line(line: String) -> std::io::Result<AllAllelesLine> {
         let split_line = line.split('\t').collect::<Vec<_>>();
         if split_line.len() < MAX_COLS {
@@ -118,14 +144,15 @@ impl AllAllelesData {
             .parse::<usize>()
             .with_context("Failed to parse Position field.")?;
         let allele = match split_line[ALL_COL] {
-            "A" | "C" | "G" | "T" => split_line[ALL_COL].as_bytes()[0],
+            "-" => None,
+            "A" | "C" | "G" | "T" => Some(split_line[ALL_COL].as_bytes()[0]),
             _ => {
                 return Err(std::io::Error::other(
-                    "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", or \"T\".",
+                    "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", or \"-\".",
                 ));
             }
         };
-        let count = split_line[POS_COL]
+        let count = split_line[CNT_COL]
             .parse::<usize>()
             .with_context("Failed to parse Count field.")?;
         let total = split_line[TOT_COL]
@@ -134,12 +161,22 @@ impl AllAllelesData {
         let frequency = split_line[FREQ_COL]
             .parse::<f64>()
             .with_context("Failed to parse Frequency field.")?;
-        let average_quality = split_line[AQ_COL]
-            .parse::<f64>()
-            .with_context("Failed to parse Average_Quality field.")?;
-        let confidence_not_mac_err = split_line[CNME_COL]
-            .parse::<f64>()
-            .with_context("Failed to parse ConfidenceNotMacErr field.")?;
+        let average_quality = match split_line[AQ_COL] {
+            "NA" => None,
+            _ => Some(
+                split_line[AQ_COL]
+                    .parse::<f64>()
+                    .with_context("Failed to parse Average_Quality field.")?,
+            ),
+        };
+        let confidence_not_mac_err = match split_line[CNME_COL] {
+            "NA" => None,
+            _ => Some(
+                split_line[CNME_COL]
+                    .parse::<f64>()
+                    .with_context("Failed to parse ConfidenceNotMacErr field.")?,
+            ),
+        };
         let paired_ub = split_line[PUB_COL]
             .parse::<f64>()
             .with_context("Failed to parse PairedUB field")?;
