@@ -48,6 +48,7 @@ fn main() -> Result<()> {
 
     println!("Wrote {} plot(s) to {}", enabled.len(), cfg.output.path);
 
+    // Demos of data API
     let filename = "test_data/READ_COUNTS.txt";
     let read_counts_data = ReadCountsData::import_from_file(filename)
         .with_context(|| format!("Cannot import Read Counts data from: \'{}\'", filename))?;

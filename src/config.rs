@@ -43,12 +43,21 @@ pub struct PlottingArgs {
     /// Output height override
     #[arg(long)]
     pub height: Option<u32>,
+    
+    #[command(flatten)]
+    pub enabled_plots: PlotToggles,
+    #[command(flatten)]
+    pub heuristics_args: HeuristicsArgs,
+    
+}
+    
 
-    // toggles for enabling/disabling to override the config
+// toggles for enabling/disabling to override the config
     // if these flags aren't used, the default will stick
     // e.g.
     //   `--density-average true`
-
+#[derive(Debug, Parser)]
+pub struct PlotToggles {
     #[arg(long)]
     pub density_average: Option<bool>,
 
@@ -66,7 +75,11 @@ pub struct PlottingArgs {
 
     #[arg(long)]
     pub confidence: Option<bool>,
+}
 
+
+#[derive(Debug, Parser)]
+pub struct HeuristicsArgs {
     #[arg(long)]
     pub alleles_tsv: String,
 
@@ -102,12 +115,12 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
     }
 
     // plot overrides
-    merge_plot_bool(&mut cfg.plots.density_average, args.density_average);
-    merge_plot_bool(&mut cfg.plots.density_8, args.density_8);
-    merge_plot_bool(&mut cfg.plots.density_observed, args.density_observed);
-    merge_plot_bool(&mut cfg.plots.observed_8, args.observed_8);
-    merge_plot_bool(&mut cfg.plots.coverage, args.coverage);
-    merge_plot_bool(&mut cfg.plots.confidence, args.confidence);
+    merge_plot_bool(&mut cfg.plots.density_average, args.enabled_plots.density_average);
+    merge_plot_bool(&mut cfg.plots.density_8, args.enabled_plots.density_8);
+    merge_plot_bool(&mut cfg.plots.density_observed, args.enabled_plots.density_observed);
+    merge_plot_bool(&mut cfg.plots.observed_8, args.enabled_plots.observed_8);
+    merge_plot_bool(&mut cfg.plots.coverage, args.enabled_plots.coverage);
+    merge_plot_bool(&mut cfg.plots.confidence, args.enabled_plots.confidence);
 
     cfg
 }

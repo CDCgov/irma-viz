@@ -6,7 +6,7 @@ use std::{
 };
 use zoe::data::err::ResultWithErrorContext;
 
-// Header format for READ_COUNTS.txt
+// Header format for `READ_COUNTS.txt`
 const READ_COUNTS_HEADER: &str = "Record\tReads\tPatterns\tPairsAndWidows";
 const RECORD_COL: usize = 0;
 const READS_COL: usize = 1;
@@ -17,9 +17,9 @@ const MAX_COLS: usize = 4;
 #[derive(Debug)]
 pub struct ReadCountLine {
     pub record: String,
-    pub read: Option<usize>,
-    pub pattern: Option<usize>,
-    pub pair_and_window: Option<usize>,
+    pub _read: Option<usize>,
+    pub _pattern: Option<usize>,
+    pub _pair_and_window: Option<usize>,
 }
 #[derive(Debug)]
 pub struct ReadCountsData {
@@ -42,8 +42,12 @@ impl ReadCountsData {
         for (line_num, line) in read_counts_lines.enumerate() {
             let line = line?;
 
+            if line.is_empty() {
+                continue;
+            }
+
             let read_count_line = Self::parse_line(line)
-                .with_context(format!("Failed to parse line number {}", line_num + 2))?;
+                .with_context(format!("Failed to parse line number {}", line_num + 1))?;
 
             record_data_map.insert(read_count_line.record.clone(), read_count_line);
         }
@@ -85,9 +89,9 @@ impl ReadCountsData {
 
         Ok(ReadCountLine {
             record,
-            read,
-            pattern,
-            pair_and_window,
+            _read: read,
+            _pattern: pattern,
+            _pair_and_window: pair_and_window,
         })
     }
 }
