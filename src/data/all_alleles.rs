@@ -1,49 +1,80 @@
-use std::{
-    fs::File,
-    io::{BufReader, prelude::*},
-};
-use zoe::data::err::ResultWithErrorContext;
-
-// Header format for `<gene>-allAlleles.txt`
-// TODO: Docs
-const ALL_ALLELES_HEADER: &str = "Reference_Name\tPosition\tAllele\tCount\tTotal\tFrequency\tAverage_Quality\tConfidenceNotMacErr\tPairedUB\tQualityUB\tAllele_Type";
-const REF_NAME_COL: usize = 0;
-const POS_COL: usize = 1;
-const ALL_COL: usize = 2;
-const CNT_COL: usize = 3;
-const TOT_COL: usize = 4;
-const FREQ_COL: usize = 5;
-const AQ_COL: usize = 6;
-const CNME_COL: usize = 7;
-const PUB_COL: usize = 8;
-const QUB_COL: usize = 9;
-const TYPE_COL: usize = 10;
-const MAX_COLS: usize = 11;
+use serde::{Deserialize, de::Error};
 
 /// TODO: Docs
-pub enum AlleleType {
-    Consensus,
-    Minority,
+#[derive(serde::Deserialize)]
+struct AllAllelesLine {
+    #[serde(rename = "Reference_Name")]
+    reference_name: String,
+    #[serde(rename = "Position")]
+    position: usize,
+    #[serde(rename = "Allele", deserialize_with = "option_allele_byte")]
+    allele: Option<u8>,
+    #[serde(rename = "Count")]
+    count: usize,
+    #[serde(rename = "Total")]
+    total: usize,
+    #[serde(rename = "Frequency")]
+    frequency: f64,
+    #[serde(rename = "Average_Quality", deserialize_with = "option_float")]
+    average_quality: Option<f64>,
+    #[serde(rename = "ConfidenceNotMacErr", deserialize_with = "option_float")]
+    confidence_not_mac_err: Option<f64>,
+    #[serde(rename = "PairedUB")]
+    paired_ub: f64,
+    #[serde(rename = "QualityUB")]
+    quality_ub: f64,
+    #[serde(rename = "Allele_Type", deserialize_with = "is_consensus")]
+    is_consensus: bool,
 }
 
 /// TODO: Docs
-struct AllAllelesLine {
-    reference_name: String,
-    position: usize,
-    allele: Option<u8>,
-    count: usize,
-    total: usize,
-    frequency: f64,
-    average_quality: Option<f64>,
-    confidence_not_mac_err: Option<f64>,
-    paired_ub: f64,
-    quality_ub: f64,
-    allele_type: AlleleType,
+fn option_allele_byte<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+
+    match s {
+        "-" => Ok(None),
+        "A" | "C" | "G" | "T" => Ok(Some(s.as_bytes()[0])),
+        _ => Err(D::Error::custom(
+            "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", or \"-\".",
+        )),
+    }
+}
+
+/// TODO: Docs
+fn option_float<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+
+    match s {
+        "NA" => Ok(None),
+        _ => s.parse::<f64>().map(Some).map_err(D::Error::custom),
+    }
+}
+
+/// TODO: Docs
+fn is_consensus<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+
+    match s {
+        "Consensus" => Ok(true),
+        "Minority" => Ok(false),
+        _ => Err(D::Error::custom(
+            "Failed to parse Allele Type. Allele Type is not \"Consensus\" or \"Minority\".",
+        )),
+    }
 }
 
 /// TODO: Docs
 pub struct AllAllelesData {
-    pub reference_name: String,
+    pub reference_names: Vec<String>,
     pub positions: Vec<usize>,
     pub alleles: Vec<Option<u8>>,
     pub counts: Vec<usize>,
@@ -53,158 +84,50 @@ pub struct AllAllelesData {
     pub confidence_not_mac_errs: Vec<Option<f64>>,
     pub paried_ubs: Vec<f64>,
     pub quality_ubs: Vec<f64>,
-    pub allele_types: Vec<AlleleType>,
+    pub is_consensus: Vec<bool>,
 }
 
 impl AllAllelesData {
     /// TODO: Docs
     pub fn import_from_file(filename: &str) -> std::io::Result<Self> {
-        let mut all_alleles_lines =
-            BufReader::new(File::open(filename).with_context("Cannot open file")?).lines();
-
-        let Some(all_alleles_header) = all_alleles_lines.next().transpose()? else {
-            return Err(std::io::Error::other("File is empty."));
-        };
-        if all_alleles_header != ALL_ALLELES_HEADER {
-            return Err(std::io::Error::other("Invalid header format."));
-        }
-
-        let Some(first_all_alleles_line_str) = all_alleles_lines.next().transpose()? else {
-            return Err(std::io::Error::other("File has no data."));
-        };
-        let first_all_alleles_line = Self::parse_line(first_all_alleles_line_str)
-            .with_context("Failed to parse line number 2")?;
-
         let mut all_alleles_data = AllAllelesData {
-            reference_name: first_all_alleles_line.reference_name,
-            positions: vec![first_all_alleles_line.position],
-            alleles: vec![first_all_alleles_line.allele],
-            counts: vec![first_all_alleles_line.count],
-            totals: vec![first_all_alleles_line.total],
-            frequencies: vec![first_all_alleles_line.frequency],
-            average_qualities: vec![first_all_alleles_line.average_quality],
-            confidence_not_mac_errs: vec![first_all_alleles_line.confidence_not_mac_err],
-            paried_ubs: vec![first_all_alleles_line.paired_ub],
-            quality_ubs: vec![first_all_alleles_line.quality_ub],
-            allele_types: vec![first_all_alleles_line.allele_type],
+            reference_names: Vec::new(),
+            positions: Vec::new(),
+            alleles: Vec::new(),
+            counts: Vec::new(),
+            totals: Vec::new(),
+            frequencies: Vec::new(),
+            average_qualities: Vec::new(),
+            confidence_not_mac_errs: Vec::new(),
+            paried_ubs: Vec::new(),
+            quality_ubs: Vec::new(),
+            is_consensus: Vec::new(),
         };
-        for (line_num, line) in all_alleles_lines.enumerate() {
-            let line = line?;
 
-            if line.is_empty() {
-                continue;
-            }
+        let mut all_alleles_reader = csv::ReaderBuilder::new()
+            .delimiter(b'\t')
+            .from_path(filename)?;
 
-            let all_alleles_line = Self::parse_line(line)
-                .with_context(format!("Failed to parse line number {}", line_num + 3))?;
+        for line in all_alleles_reader.deserialize() {
+            let line: AllAllelesLine = line?;
 
-            if all_alleles_data.reference_name != all_alleles_line.reference_name {
-                return Err(std::io::Error::other(format!(
-                    "Reference name has changed on line number {}",
-                    line_num + 2
-                )));
-            }
-            all_alleles_data.positions.push(all_alleles_line.position);
-            all_alleles_data.alleles.push(all_alleles_line.allele);
-            all_alleles_data.counts.push(all_alleles_line.count);
-            all_alleles_data.totals.push(all_alleles_line.total);
-            all_alleles_data
-                .frequencies
-                .push(all_alleles_line.frequency);
+            all_alleles_data.reference_names.push(line.reference_name);
+            all_alleles_data.positions.push(line.position);
+            all_alleles_data.alleles.push(line.allele);
+            all_alleles_data.counts.push(line.count);
+            all_alleles_data.totals.push(line.total);
+            all_alleles_data.frequencies.push(line.frequency);
             all_alleles_data
                 .average_qualities
-                .push(all_alleles_line.average_quality);
+                .push(line.average_quality);
             all_alleles_data
                 .confidence_not_mac_errs
-                .push(all_alleles_line.confidence_not_mac_err);
-            all_alleles_data.paried_ubs.push(all_alleles_line.paired_ub);
-            all_alleles_data
-                .quality_ubs
-                .push(all_alleles_line.quality_ub);
-            all_alleles_data
-                .allele_types
-                .push(all_alleles_line.allele_type);
+                .push(line.confidence_not_mac_err);
+            all_alleles_data.paried_ubs.push(line.paired_ub);
+            all_alleles_data.quality_ubs.push(line.quality_ub);
+            all_alleles_data.is_consensus.push(line.is_consensus);
         }
 
         Ok(all_alleles_data)
-    }
-
-    /// TODO: Docs
-    fn parse_line(line: String) -> std::io::Result<AllAllelesLine> {
-        let split_line = line.split('\t').collect::<Vec<_>>();
-        if split_line.len() < MAX_COLS {
-            return Err(std::io::Error::other(format!(
-                "Too few fields. Found: {found}, expected: {MAX_COLS}",
-                found = split_line.len()
-            )));
-        }
-
-        let reference_name = split_line[REF_NAME_COL].to_string();
-        let position = split_line[POS_COL]
-            .parse::<usize>()
-            .with_context("Failed to parse Position field.")?;
-        let allele = match split_line[ALL_COL] {
-            "-" => None,
-            "A" | "C" | "G" | "T" => Some(split_line[ALL_COL].as_bytes()[0]),
-            _ => {
-                return Err(std::io::Error::other(
-                    "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", or \"-\".",
-                ));
-            }
-        };
-        let count = split_line[CNT_COL]
-            .parse::<usize>()
-            .with_context("Failed to parse Count field.")?;
-        let total = split_line[TOT_COL]
-            .parse::<usize>()
-            .with_context("Failed to parse Total field.")?;
-        let frequency = split_line[FREQ_COL]
-            .parse::<f64>()
-            .with_context("Failed to parse Frequency field.")?;
-        let average_quality = match split_line[AQ_COL] {
-            "NA" => None,
-            _ => Some(
-                split_line[AQ_COL]
-                    .parse::<f64>()
-                    .with_context("Failed to parse Average_Quality field.")?,
-            ),
-        };
-        let confidence_not_mac_err = match split_line[CNME_COL] {
-            "NA" => None,
-            _ => Some(
-                split_line[CNME_COL]
-                    .parse::<f64>()
-                    .with_context("Failed to parse ConfidenceNotMacErr field.")?,
-            ),
-        };
-        let paired_ub = split_line[PUB_COL]
-            .parse::<f64>()
-            .with_context("Failed to parse PairedUB field")?;
-        let quality_ub = split_line[QUB_COL]
-            .parse::<f64>()
-            .with_context("Failed to parse QualityUB field.")?;
-        let allele_type = match split_line[TYPE_COL] {
-            "Consensus" => AlleleType::Consensus,
-            "Minority" => AlleleType::Minority,
-            _ => {
-                return Err(std::io::Error::other(
-                    "Failed to parse Allele_Type field. Allele_Type is not \"Consensus\" or \"Minority\".",
-                ));
-            }
-        };
-
-        Ok(AllAllelesLine {
-            reference_name,
-            position,
-            allele,
-            count,
-            total,
-            frequency,
-            average_quality,
-            confidence_not_mac_err,
-            paired_ub,
-            quality_ub,
-            allele_type,
-        })
     }
 }
