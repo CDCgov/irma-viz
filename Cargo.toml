@@ -12,3 +12,4 @@ anyhow = "1"
 csv = "1"
 plotters = { version = "0.3.7", features = ["fontconfig-dlopen"] }
 zoe = "0.0.26"
+kuva = "0.1.4"

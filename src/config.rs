@@ -1,5 +1,10 @@
+use std::path::PathBuf;
+
+use kuva::plot::LineStyle;
 use serde_derive::Deserialize;
 use clap::Parser;
+
+/// (I think) we will want to have separate configuration options for each plot
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -9,12 +14,14 @@ pub struct Config {
 
 #[derive(Debug, Deserialize)]
 pub struct PlotsConfig {
+    pub heuristics_path: String,
     pub density_average: bool,
     pub density_8: bool,
     pub density_observed: bool,
     pub observed_8: bool,
     pub coverage: bool,
     pub confidence: bool,
+    pub sankey: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -126,3 +133,12 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
 }
 
 
+#[derive(Debug)]
+pub struct LinePlotConfig {
+    pub color: String,
+    pub stroke_width: f32,
+    pub title: String,
+    pub xlabel: String,
+    pub ylabel: String,
+    pub line_style: LineStyle,
+}

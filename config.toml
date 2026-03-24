@@ -1,13 +1,41 @@
 [plots]
-density_average = true
-density_8 = true
-density_observed = true
-observed_8 = true
-coverage = true
-confidence = true
+density_average = false
+density_8 = false
+density_observed = false
+observed_8 = false
+coverage = false
+confidence = false
+sankey = true
 
 [output]
 path = "out/plots.svg"
 width = 1200
 height = 800
 
+[density_average]
+color = "#1f77b4"
+stroke_width = 2.0
+title = "Density of average allele quality"
+xlabel = "Allele quality"
+ylabel = "Density"
+
+[density_8]
+color = "#1f77b4"
+stroke_width = 2.0
+title = "Density of average allele quality to 8"
+xlabel = "Allele quality"
+ylabel = "Density" 
+
+[density_observed]
+color = "#1f77b4"
+stroke_width = 2.0
+title = "Density of average allele quality to 100%"
+xlabel = "Observed frequency"
+ylabel = "Density" 
+
+[observed_8]
+color = "#1f77b4"
+stroke_width = 2.0
+title = "Density of average allele quality to 100%"
+xlabel = "Observed frequency"
+ylabel = "Density" 
