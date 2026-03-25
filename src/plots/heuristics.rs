@@ -1,11 +1,6 @@
-use crate::{
-    config::{Config},
-};
+use crate::config::Config;
 use anyhow::{Context, Result};
-use kuva::{
-    plot::Histogram,
-    prelude::*,
-};
+use kuva::{plot::Histogram, prelude::*};
 use std::fs;
 
 pub fn load_config(path: &str) -> Result<Config> {

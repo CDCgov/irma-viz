@@ -1,6 +1,5 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, de::Error};
+use std::path::PathBuf;
 
 /// TODO: Docs
 #[derive(serde::Deserialize)]

@@ -1,10 +1,10 @@
 pub mod heuristics;
 pub mod sankey;
-
-use std::path::{Path};
-
-use kuva::{prelude::{Layout, Plot}, render_to_svg};
-
+use kuva::{
+    prelude::{Layout, Plot},
+    render_to_svg,
+};
+use std::path::Path;
 
 pub fn render_plots(plots: Vec<(String, (Vec<Plot>, Layout))>, outpath: impl AsRef<Path>) {
     for plot in plots {
@@ -14,6 +14,5 @@ pub fn render_plots(plots: Vec<(String, (Vec<Plot>, Layout))>, outpath: impl AsR
         std::fs::write(filepath, svg).unwrap();
     }
 }
-
 
 pub use heuristics::*;

@@ -1,8 +1,8 @@
-
-
-use kuva::{plot::SankeyPlot, prelude::{Layout, Plot}};
-
 use crate::data::ReadCountsData;
+use kuva::{
+    plot::SankeyPlot,
+    prelude::{Layout, Plot},
+};
 
 /*pub fn kuva_sankey(data: ReadCountsData) { //(Vec<Plot>, Layout) {
     let sankey_edges: Vec<(&str, &str, f64)> = Vec::new();
@@ -13,15 +13,11 @@ use crate::data::ReadCountsData;
 }
 */
 
-pub fn to_sankey_vec(
-    data: &ReadCountsData,
-) -> Vec<(&str, &str, f64)> {
+pub fn to_sankey_vec(data: &ReadCountsData) -> Vec<(&str, &str, f64)> {
     let mut out = Vec::new();
     let lines = &data.record_data_map;
 
-    let get_read = |key: &str| -> Option<f64> {
-        lines.get(key)?._read.map(|v| v as f64)
-    };
+    let get_read = |key: &str| -> Option<f64> { lines.get(key)?._read.map(|v| v as f64) };
 
     if let Some(v) = get_read("2-passQC") {
         out.push(("Initial Reads", "Pass QC", v));
@@ -49,14 +45,14 @@ pub fn to_sankey_vec(
 
     for (key, line) in lines.iter() {
         if let Some(target) = key.as_str().strip_prefix("4-")
-            && let Some(v) = line._read {
-                out.push(("Primary Match", target, v as f64));
-            }
-
-        else if let Some(target) = key.as_str().strip_prefix("5-")
-            && let Some(v) = line._read {
-                out.push(("Alt Match", target, v as f64));
-            }
+            && let Some(v) = line._read
+        {
+            out.push(("Primary Match", target, v as f64));
+        } else if let Some(target) = key.as_str().strip_prefix("5-")
+            && let Some(v) = line._read
+        {
+            out.push(("Alt Match", target, v as f64));
+        }
     }
 
     out

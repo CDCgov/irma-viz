@@ -1,7 +1,11 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAllelesData, ReadCountsData},
-    plots::{load_config, render_plots, sankey::{kuva_sankey, to_sankey_vec}, heuristics::kuva_density},
+    plots::{
+        heuristics::kuva_density,
+        load_config, render_plots,
+        sankey::{kuva_sankey, to_sankey_vec},
+    },
 };
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -30,17 +34,32 @@ fn main() -> Result<()> {
 
     // sankey
     if let Some(read_counts_path) = cfg.plots.sankey {
-        let read_counts_data = ReadCountsData::import_from_file(&read_counts_path)
-        .with_context(|| format!("Cannot import Read Counts data from: \'{}\'", &read_counts_path.to_string_lossy()))?;
+        let read_counts_data =
+            ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
+                format!(
+                    "Cannot import Read Counts data from: \'{}\'",
+                    &read_counts_path.display()
+                )
+            })?;
         let sankey = kuva_sankey(to_sankey_vec(&read_counts_data));
         plots.push((String::from("sankey.svg"), sankey));
     }
 
     // heuristics
     if let Some(all_alleles_path) = cfg.plots.heuristics_path {
-        let allele_data = AllAllelesData::import_from_file(&all_alleles_path)?;
-        
-        let avg_qualities = allele_data.average_qualities.into_iter().flatten().collect::<Vec<_>>();
+        let allele_data =
+            AllAllelesData::import_from_file(&all_alleles_path).with_context(|| {
+                format!(
+                    "Cannot import All Alleles data from \'{}\'",
+                    &all_alleles_path.display()
+                )
+            })?;
+
+        let avg_qualities = allele_data
+            .average_qualities
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
         let density = kuva_density(avg_qualities.clone());
         plots.push((String::from("density.svg"), density));
 

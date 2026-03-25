@@ -1,8 +1,7 @@
-use std::path::PathBuf;
-
+use clap::Parser;
 use kuva::plot::LineStyle;
 use serde_derive::Deserialize;
-use clap::Parser;
+use std::path::PathBuf;
 
 /// (I think) we will want to have separate configuration options for each plot
 
@@ -51,19 +50,17 @@ pub struct PlottingArgs {
     /// Output height override
     #[arg(long)]
     pub height: Option<u32>,
-    
+
     #[command(flatten)]
     pub enabled_plots: PlotToggles,
     #[command(flatten)]
     pub heuristics_args: HeuristicsArgs,
-    
 }
-    
 
 // toggles for enabling/disabling to override the config
-    // if these flags aren't used, the default will stick
-    // e.g.
-    //   `--density-average true`
+// if these flags aren't used, the default will stick
+// e.g.
+//   `--density-average true`
 #[derive(Debug, Parser)]
 pub struct PlotToggles {
     #[arg(long)]
@@ -85,7 +82,6 @@ pub struct PlotToggles {
     pub confidence: Option<bool>,
 }
 
-
 #[derive(Debug, Parser, Deserialize)]
 pub struct HeuristicsArgs {
     #[arg(long)]
@@ -99,7 +95,7 @@ pub struct HeuristicsArgs {
 
     #[arg(long)]
     pub min_tcc: Option<f64>,
-    
+
     #[arg(long)]
     pub min_conf: Option<f64>,
 }
@@ -123,9 +119,15 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
     }
 
     // plot overrides
-    merge_plot_bool(&mut cfg.plots.density_average, args.enabled_plots.density_average);
+    merge_plot_bool(
+        &mut cfg.plots.density_average,
+        args.enabled_plots.density_average,
+    );
     merge_plot_bool(&mut cfg.plots.density_8, args.enabled_plots.density_8);
-    merge_plot_bool(&mut cfg.plots.density_observed, args.enabled_plots.density_observed);
+    merge_plot_bool(
+        &mut cfg.plots.density_observed,
+        args.enabled_plots.density_observed,
+    );
     merge_plot_bool(&mut cfg.plots.observed_8, args.enabled_plots.observed_8);
     merge_plot_bool(&mut cfg.plots.coverage, args.enabled_plots.coverage);
     merge_plot_bool(&mut cfg.plots.confidence, args.enabled_plots.confidence);
