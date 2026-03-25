@@ -1,16 +1,23 @@
 [plots]
-density_average = false
-density_8 = false
-density_observed = false
+heuristics_path = "test_data/A_PA-allAlleles.txt"
+density_average = true
+density_8 = true
+density_observed = true
 observed_8 = false
 coverage = false
 confidence = false
-sankey = true
+sankey = "test_data/READ_COUNTS.txt"
 
 [output]
 path = "out/plots.svg"
 width = 1200
 height = 800
+
+[constants]
+min_aq = 30
+min_f = 5
+min_tcc = 6  
+min_conf = 7
 
 [density_average]
 color = "#1f77b4"

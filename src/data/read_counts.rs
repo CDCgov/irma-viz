@@ -2,7 +2,7 @@ use core::option::Option;
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, prelude::*},
+    io::{BufReader, prelude::*}, path::PathBuf,
 };
 use zoe::data::err::ResultWithErrorContext;
 
@@ -31,7 +31,7 @@ pub struct ReadCountsData {
 
 impl ReadCountsData {
     /// TODO: Docs
-    pub fn import_from_file(filename: &str) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
         let mut read_counts_lines =
             BufReader::new(File::open(filename).with_context("Cannot open file")?).lines();
 

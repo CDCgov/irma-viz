@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, de::Error};
 
 /// TODO: Docs
@@ -89,7 +91,7 @@ pub struct AllAllelesData {
 
 impl AllAllelesData {
     /// TODO: Docs
-    pub fn import_from_file(filename: &str) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
         let mut all_alleles_data = AllAllelesData {
             reference_names: Vec::new(),
             positions: Vec::new(),

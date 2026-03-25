@@ -10,11 +10,12 @@ use clap::Parser;
 pub struct Config {
     pub plots: PlotsConfig,
     pub output: OutputConfig,
+    pub constants: HeuristicsArgs,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct PlotsConfig {
-    pub heuristics_path: String,
+    pub heuristics_path: Option<PathBuf>,
     pub density_average: bool,
     pub density_8: bool,
     pub density_observed: bool,
@@ -85,22 +86,22 @@ pub struct PlotToggles {
 }
 
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Deserialize)]
 pub struct HeuristicsArgs {
     #[arg(long)]
-    pub alleles_tsv: String,
+    pub heuristics_path: Option<PathBuf>,
 
     #[arg(long)]
-    pub min_aq: f64,
+    pub min_aq: Option<f64>,
 
     #[arg(long)]
-    pub min_f: f64,
+    pub min_f: Option<f64>,
 
     #[arg(long)]
-    pub min_tcc: f64,
+    pub min_tcc: Option<f64>,
     
     #[arg(long)]
-    pub min_conf: f64,
+    pub min_conf: Option<f64>,
 }
 
 fn merge_plot_bool(target: &mut bool, override_val: Option<bool>) {
@@ -132,7 +133,7 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
     cfg
 }
 
-
+#[allow(unused)]
 #[derive(Debug)]
 pub struct LinePlotConfig {
     pub color: String,

@@ -1,31 +1,15 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-<<<<<<< HEAD
     data::{AllAllelesData, ReadCountsData},
-    plots::{enabled_plots, load_config, make_plots, render_plots},
-=======
-    data::ReadCountsData,
-    plots::{enabled_plots, load_config, make_plots, render_plots, sankey::{kuva_sankey, to_sankey_vec}},
->>>>>>> 28954ae (wip)
+    plots::{load_config, render_plots, sankey::{kuva_sankey, to_sankey_vec}, heuristics::kuva_density},
 };
 use anyhow::{Context, Result};
 use clap::Parser;
+use kuva::prelude::{Layout, Plot};
 use std::fs;
 mod config;
 mod data;
 mod plots;
-
-/// stores kind of plot and the data that goes along with it
-#[derive(Clone, Debug)]
-enum PlotData<'a> {
-    DensityAverage(Vec<(f64, f64)>),
-    Density8(Vec<(f64, f64)>),
-    DensityObserved(Vec<(f64, f64)>),
-    Observed8(Vec<(f64, f64)>),
-    CoverageHist(Vec<f64>),
-    ConfidenceHist(Vec<f64>),
-    ReadMapSankey(Vec<(&'a str, &'a str, f64)>),
-}
 
 fn main() -> Result<()> {
     let cli = PlottingArgs::parse();
@@ -35,12 +19,6 @@ fn main() -> Result<()> {
 
     let cfg = apply_cli_overrides(cfg, &cli);
 
-    let enabled = enabled_plots(&cfg.plots);
-    let num_plots = enabled.len();
-    if num_plots == 0 {
-        anyhow::bail!("No plots enabled in config.toml ([plots] section).");
-    }
-
     // create output directory
     if let Some(parent) = std::path::Path::new(&cfg.output.path).parent()
         && !parent.as_os_str().is_empty()
@@ -48,32 +26,44 @@ fn main() -> Result<()> {
         fs::create_dir_all(parent).with_context(|| format!("Creating output dir {:?}", parent))?;
     }
 
-    let plots = make_plots(enabled);
-    render_plots(plots, &cfg.output.path);
+    let mut plots: Vec<(String, (Vec<Plot>, Layout))> = Vec::new();
 
-    println!("Wrote {} plot(s) to {}", num_plots, cfg.output.path);
+    // sankey
+    if let Some(read_counts_path) = cfg.plots.sankey {
+        let read_counts_data = ReadCountsData::import_from_file(&read_counts_path)
+        .with_context(|| format!("Cannot import Read Counts data from: \'{}\'", &read_counts_path.to_string_lossy()))?;
+        let sankey = kuva_sankey(to_sankey_vec(&read_counts_data));
+        plots.push((String::from("sankey.svg"), sankey));
+    }
 
-    // Demos of data API
-    let filename = "test_data/READ_COUNTS.txt";
-    let read_counts_data = ReadCountsData::import_from_file(filename)
-        .with_context(|| format!("Cannot import Read Counts data from: \'{}\'", filename))?;
-    let _record_data = read_counts_data
-        .record_data_map
-        .get("4-A_NP")
-        .expect("ya beefed it");
-    println!("{record_data:#?}");
+    // heuristics
+    if let Some(all_alleles_path) = cfg.plots.heuristics_path {
+        let allele_data = AllAllelesData::import_from_file(&all_alleles_path)?;
+        
+        let avg_qualities = allele_data.average_qualities.into_iter().flatten().collect::<Vec<_>>();
+        let density = kuva_density(avg_qualities.clone());
+        plots.push((String::from("density.svg"), density));
 
-    let filename2 = "test_data/A_PA-allAlleles.txt";
-    let all_alleles_data = AllAllelesData::import_from_file(filename2)
-        .with_context(|| format!("Cannot import All Alleles data from: \'{}\'", filename2))?;
-    let count_data = all_alleles_data.counts[0];
-    println!("this count: {count_data}");
+        // quality density subplot
+        if let Some(min_aq) = cfg.constants.min_aq {
+            let mut limited_density = kuva_density(avg_qualities.clone());
+            limited_density.1.x_axis_max = Some(min_aq);
+            plots.push((format!("density_to_{}.svg", min_aq), limited_density));
+        }
 
+        if cfg.plots.density_observed {
+            let observed_densities = allele_data.frequencies.clone();
+            let observed_frequency = kuva_density(observed_densities);
+            plots.push((String::from("frequency.svg"), observed_frequency));
+        }
 
-    //println!("{record_data:#?}");
-    let transformed = to_sankey_vec(&read_counts_data);
-    let sankey = kuva_sankey(transformed);
-    let plots = vec![(String::from("Sankey.svg"), sankey)];
+        if let Some(min_f) = cfg.constants.min_f {
+            let mut limited_frequency = kuva_density(allele_data.frequencies.clone());
+            limited_frequency.1.x_axis_max = Some(min_f);
+            plots.push((format!("frequency_to_{}.svg", min_f), limited_frequency));
+        }
+    }
+
     render_plots(plots, &cfg.output.path);
     Ok(())
 }
