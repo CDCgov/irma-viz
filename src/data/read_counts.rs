@@ -1,103 +1,42 @@
-use anyhow::{Context, Error, anyhow};
+use crate::data::*;
+use anyhow::Error;
 use core::option::Option;
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufReader, prelude::*},
-    path::PathBuf,
-};
+use std::{collections::HashMap, path::PathBuf};
 
-// Header format for `READ_COUNTS.txt`
-// TODO: Docs
-const READ_COUNTS_HEADER: &str = "Record\tReads\tPatterns\tPairsAndWidows";
-const RECORD_COL: usize = 0;
-const READS_COL: usize = 1;
-const PATTERNS_COL: usize = 2;
-const PAIRSANDWINDOWS_COL: usize = 3;
-const MAX_COLS: usize = 4;
-
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
 /// TODO: Docs
-pub struct ReadCountLine {
+pub struct ReadCountsLine {
+    #[serde(rename = "Record")]
     pub record: String,
-    pub _read: Option<usize>,
-    pub _pattern: Option<usize>,
-    pub _pair_and_window: Option<usize>,
+    #[serde(rename = "Reads", deserialize_with = "option_float")]
+    pub read: Option<f64>,
+    #[serde(rename = "Patterns", deserialize_with = "option_float")]
+    pub _pattern: Option<f64>,
+    #[serde(rename = "PairsAndWindows", deserialize_with = "option_float")]
+    pub _pair_and_window: Option<f64>,
 }
+
 #[derive(Debug)]
 /// TODO: Docs
 pub struct ReadCountsData {
-    pub record_data_map: HashMap<String, ReadCountLine>,
+    pub record_data_map: HashMap<String, ReadCountsLine>,
 }
 
 impl ReadCountsData {
     /// TODO: Docs
     pub fn import_from_file(filename: &PathBuf) -> Result<Self, Error> {
-        let mut read_counts_lines =
-            BufReader::new(File::open(filename).with_context(|| "Cannot open file")?).lines();
-
-        let Some(read_counts_header) = read_counts_lines.next().transpose()? else {
-            return Err(anyhow!("File is empty."));
-        };
-        if read_counts_header != READ_COUNTS_HEADER {
-            return Err(anyhow!("Invalid header format."));
-        }
-
         let mut record_data_map = HashMap::new();
-        for (line_num, line) in read_counts_lines.enumerate() {
-            let line = line?;
 
-            if line.is_empty() {
-                continue;
-            }
+        let mut read_counts_reader = csv::ReaderBuilder::new()
+            .delimiter(b'\t')
+            .from_path(filename)?;
 
-            let read_count_line = Self::parse_line(line)
-                .with_context(|| format!("Failed to parse line number {}", line_num + 1))?;
+        for line in read_counts_reader.deserialize() {
+            let line: ReadCountsLine = line?;
 
-            record_data_map.insert(read_count_line.record.clone(), read_count_line);
+            record_data_map.insert(line.record.clone(), line);
         }
 
         Ok(ReadCountsData { record_data_map })
-    }
-
-    /// TODO: Docs
-    fn parse_line(line: String) -> Result<ReadCountLine, Error> {
-        let split_line = line.split('\t').collect::<Vec<_>>();
-        if split_line.len() < MAX_COLS {
-            return Err(anyhow!(format!(
-                "Too few fields. Found: {found}, expected: {MAX_COLS}",
-                found = split_line.len()
-            )));
-        }
-
-        let record = split_line[RECORD_COL].to_string();
-        let read = Some(
-            split_line[READS_COL]
-                .parse::<usize>()
-                .with_context(|| "Failed to parse Read field.")?,
-        );
-        let pattern = match split_line[PATTERNS_COL] {
-            "NA" => None,
-            _ => Some(
-                split_line[PATTERNS_COL]
-                    .parse::<usize>()
-                    .with_context(|| "Failed to parse Pattern field.")?,
-            ),
-        };
-        let pair_and_window = match split_line[PAIRSANDWINDOWS_COL] {
-            "NA" => None,
-            _ => Some(
-                split_line[PAIRSANDWINDOWS_COL]
-                    .parse::<usize>()
-                    .with_context(|| "Failed to parse PairsAndWidows field.")?,
-            ),
-        };
-
-        Ok(ReadCountLine {
-            record,
-            _read: read,
-            _pattern: pattern,
-            _pair_and_window: pair_and_window,
-        })
     }
 }
