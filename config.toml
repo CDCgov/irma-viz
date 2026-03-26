@@ -6,7 +6,8 @@ density_observed = true
 observed_8 = false
 coverage = false
 confidence = false
-sankey = "test_data/READ_COUNTS.txt"
+sankey_path = "test_data/READ_COUNTS.txt"
+coverage_path = "test_data/A_PA-coverage.txt"
 
 [output]
 path = "out/plots.svg"

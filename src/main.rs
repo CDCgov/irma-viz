@@ -1,6 +1,6 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAllelesData, ReadCountsData},
+    data::{AllAllelesData, CoverageData, ReadCountsData},
     plots::{
         heuristics::kuva_density,
         load_config, render_plots,
@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     let mut plots: Vec<(String, (Vec<Plot>, Layout))> = Vec::new();
 
     // sankey
-    if let Some(read_counts_path) = cfg.plots.sankey {
+    if let Some(read_counts_path) = cfg.plots.sankey_path {
         let read_counts_data =
             ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
                 format!(
@@ -84,5 +84,24 @@ fn main() -> Result<()> {
     }
 
     render_plots(plots, &cfg.output.path);
+
+    // Coverage API demo
+    if let Some(coverage_path) = cfg.plots.coverage_path {
+        let coverage_data = CoverageData::import_from_file(&coverage_path).with_context(|| {
+            format!(
+                "Cannot import Coverage data from \'{}\'",
+                &coverage_path.display()
+            )
+        })?;
+
+        let coverages = coverage_data
+            .coverage_vec
+            .iter()
+            .map(|line| line.coverage)
+            .collect::<Vec<_>>();
+
+        println!("{coverages:#?}");
+    }
+
     Ok(())
 }

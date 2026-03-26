@@ -1,6 +1,8 @@
 pub mod all_alleles;
+pub mod coverage;
 pub mod read_counts;
 pub use all_alleles::*;
+pub use coverage::*;
 pub use read_counts::*;
 use serde::{Deserialize, de::Error};
 

@@ -21,7 +21,8 @@ pub struct PlotsConfig {
     pub observed_8: bool,
     pub coverage: bool,
     pub confidence: bool,
-    pub sankey: Option<PathBuf>,
+    pub sankey_path: Option<PathBuf>,
+    pub coverage_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
