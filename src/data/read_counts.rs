@@ -1,5 +1,4 @@
 use crate::data::*;
-use anyhow::Error;
 use core::option::Option;
 use std::{collections::HashMap, path::PathBuf};
 
@@ -24,7 +23,7 @@ pub struct ReadCountsData {
 
 impl ReadCountsData {
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> Result<Self, Error> {
+    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
         let mut record_data_map = HashMap::new();
 
         let mut read_counts_reader = csv::ReaderBuilder::new()
