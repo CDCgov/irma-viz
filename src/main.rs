@@ -2,12 +2,8 @@
 
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAllelesData, CoverageData, ReadCountsData},
-    plots::{
-        heuristics::kuva_density,
-        load_config, render_plots,
-        sankey::{kuva_sankey, to_sankey_vec},
-    },
+    data::{AllAllelesData, CoverageData, SankeyVec},
+    plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
 };
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -29,21 +25,30 @@ fn main() -> Result<()> {
     if let output_dir = std::path::Path::new(&cfg.output.path)
         && !output_dir.as_os_str().is_empty()
     {
-        fs::create_dir_all(output_dir).with_context(|| format!("Creating output dir {:?}", output_dir))?;
+        fs::create_dir_all(output_dir)
+            .with_context(|| format!("Creating output dir {}", output_dir.display()))?;
     }
 
     let mut plots: Vec<(String, (Vec<Plot>, Layout))> = Vec::new();
 
     // sankey
     if let Some(read_counts_path) = cfg.plots.sankey_path {
-        let read_counts_data =
-            ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
+        // let read_counts_data =
+        //     ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
+        //         format!(
+        //             "Failed to import Read Counts data from: \'{}\'",
+        //             &read_counts_path.display()
+        //         )
+        //     })?;
+        let sankey_edges = SankeyVec::import_from_file(&read_counts_path)
+            .with_context(|| {
                 format!(
                     "Failed to import Read Counts data from: \'{}\'",
                     &read_counts_path.display()
                 )
-            })?;
-        let sankey = kuva_sankey(to_sankey_vec(&read_counts_data));
+            })?
+            .edges;
+        let sankey = kuva_sankey(sankey_edges);
         plots.push((String::from("sankey.svg"), sankey));
     }
 

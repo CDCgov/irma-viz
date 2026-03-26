@@ -21,6 +21,7 @@ min_f = 5
 min_tcc = 6  
 min_conf = 7
 
+# TODO: Make default color themes colorblind friendly/compliant
 [density_average]
 color = "#1f77b4"
 stroke_width = 2.0

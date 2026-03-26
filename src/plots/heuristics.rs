@@ -19,7 +19,7 @@ pub fn kuva_density(data: Vec<f64>) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
-#[allow(dead_code)]
+#[allow(unused)]
 pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> (Vec<Plot>, Layout) {
     // Compute range from data first.
     let min = data.iter().cloned().fold(f64::INFINITY, f64::min);
