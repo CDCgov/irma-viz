@@ -9,10 +9,6 @@ pub struct ReadCountsLine {
     pub record: String,
     #[serde(rename = "Reads", deserialize_with = "option_float")]
     pub read: Option<f64>,
-    #[serde(rename = "Patterns", deserialize_with = "option_float")]
-    pub _pattern: Option<f64>,
-    #[serde(rename = "PairsAndWindows", deserialize_with = "option_float")]
-    pub _pair_and_window: Option<f64>,
 }
 
 #[derive(Debug)]

@@ -1,34 +1,30 @@
-use crate::data::*;
 use std::path::PathBuf;
 
+// TODO: find out what is needed for `coverageDiagram.r`
+// Can also change type to float if needed for kuva to avoid later casting
 #[derive(Debug, serde::Deserialize)]
+/// TODO: Docs
 pub struct CoverageLine {
-    #[serde(rename = "Reference_Name")]
-    pub _reference_name: String,
     #[serde(rename = "Position")]
-    pub _position: usize,
+    pub position: usize,
     #[serde(rename = "Coverage Depth")]
     pub coverage: usize,
-    #[serde(rename = "Consensus", deserialize_with = "option_allele_byte")]
-    pub _consenesus: Option<u8>,
-    #[serde(rename = "Deletions")]
-    pub _deletions: usize,
-    #[serde(rename = "Ambiguous")]
-    pub _ambiguous: usize,
-    #[serde(rename = "Consensus_Count")]
-    pub _consensus_count: usize,
-    #[serde(rename = "Consensus_Average_Quality")]
-    pub _consensus_aq: f64,
 }
 
 #[derive(Debug)]
+/// TODO: Docs
 pub struct CoverageData {
-    pub coverage_vec: Vec<CoverageLine>,
+    pub positions: Vec<usize>,
+    pub coverages: Vec<usize>,
 }
 
 impl CoverageData {
+    /// TODO: Docs
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
-        let mut coverage_vec = Vec::new();
+        let mut coverage_data = CoverageData {
+            positions: Vec::new(),
+            coverages: Vec::new(),
+        };
 
         let mut coverage_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -36,9 +32,10 @@ impl CoverageData {
 
         for line in coverage_reader.deserialize() {
             let line: CoverageLine = line?;
-            coverage_vec.push(line);
+            coverage_data.positions.push(line.position);
+            coverage_data.coverages.push(line.coverage)
         }
 
-        Ok(CoverageData { coverage_vec })
+        Ok(coverage_data)
     }
 }

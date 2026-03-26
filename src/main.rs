@@ -1,3 +1,5 @@
+//! TODO: Docs
+
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAllelesData, CoverageData, ReadCountsData},
@@ -24,10 +26,10 @@ fn main() -> Result<()> {
     let cfg = apply_cli_overrides(cfg, &cli);
 
     // create output directory
-    if let Some(parent) = std::path::Path::new(&cfg.output.path).parent()
-        && !parent.as_os_str().is_empty()
+    if let output_dir = std::path::Path::new(&cfg.output.path)
+        && !output_dir.as_os_str().is_empty()
     {
-        fs::create_dir_all(parent).with_context(|| format!("Creating output dir {:?}", parent))?;
+        fs::create_dir_all(output_dir).with_context(|| format!("Creating output dir {:?}", output_dir))?;
     }
 
     let mut plots: Vec<(String, (Vec<Plot>, Layout))> = Vec::new();
@@ -37,7 +39,7 @@ fn main() -> Result<()> {
         let read_counts_data =
             ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
                 format!(
-                    "Cannot import Read Counts data from: \'{}\'",
+                    "Failed to import Read Counts data from: \'{}\'",
                     &read_counts_path.display()
                 )
             })?;
@@ -50,7 +52,7 @@ fn main() -> Result<()> {
         let allele_data =
             AllAllelesData::import_from_file(&all_alleles_path).with_context(|| {
                 format!(
-                    "Cannot import All Alleles data from \'{}\'",
+                    "Failed to import All Alleles data from \'{}\'",
                     &all_alleles_path.display()
                 )
             })?;
@@ -83,24 +85,20 @@ fn main() -> Result<()> {
         }
     }
 
-    render_plots(plots, &cfg.output.path);
+    render_plots(plots, &cfg.output.path)?;
 
     // Coverage API demo
     if let Some(coverage_path) = cfg.plots.coverage_path {
         let coverage_data = CoverageData::import_from_file(&coverage_path).with_context(|| {
             format!(
-                "Cannot import Coverage data from \'{}\'",
+                "Failed to import Coverage data from \'{}\'",
                 &coverage_path.display()
             )
         })?;
 
-        let coverages = coverage_data
-            .coverage_vec
-            .iter()
-            .map(|line| line.coverage)
-            .collect::<Vec<_>>();
+        let coverages = coverage_data.coverages;
 
-        println!("{coverages:#?}");
+        println!("{:?}", &coverages[0..10]);
     }
 
     Ok(())

@@ -1,3 +1,4 @@
+# TODO: Docs
 [plots]
 heuristics_path = "test_data/A_PA-allAlleles.txt"
 density_average = true
@@ -10,7 +11,7 @@ sankey_path = "test_data/READ_COUNTS.txt"
 coverage_path = "test_data/A_PA-coverage.txt"
 
 [output]
-path = "out/plots.svg"
+path = "out/"
 width = 1200
 height = 800
 
