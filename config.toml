@@ -3,9 +3,9 @@
 density_average = true
 density_8 = true
 density_observed = true
-observed_8 = false
-coverage = false
-confidence = false
+observed_8 = true
+coverage = true
+confidence = true
 sankey_path = "test_data/READ_COUNTS.txt"
 coverage_path = "test_data/A_PA-coverage.txt"
 heuristics_path = "test_data/A_PA-allAlleles.txt"
@@ -19,10 +19,11 @@ width = 1200
 height = 800
 
 [constants]
-min_aq = 30
-min_f = 5
-min_tcc = 6  
-min_conf = 7
+# These are constants that affect the ranges of the heuristic plots. They are overridden in the configs for each IRMA module
+min_aq = 24     # minimum average variant quality, does not apply to deletions
+min_f = 0.008   # minimum frequency for single nucleotide variants
+min_tcc = 100   # minimum non-ambiguous column coverage
+min_conf = 0.80 # minimum confidence not machine error
 
 # TODO: Make default color themes colorblind friendly/compliant
 [density_average]
@@ -52,3 +53,6 @@ stroke_width = 2.0
 title = "Density of average allele quality to 100%"
 xlabel = "Observed frequency"
 ylabel = "Density" 
+
+[coverage_histogram]
+bins = 50   # from IRMA `heuristicDiagram.R`

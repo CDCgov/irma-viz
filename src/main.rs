@@ -3,7 +3,9 @@
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
-    plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
+    plots::{
+        heuristics::kuva_density, kuva_histogram, load_config, render_plots, sankey::kuva_sankey,
+    },
 };
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -79,6 +81,25 @@ fn main() -> Result<()> {
             let mut limited_frequency = kuva_density(allele_data.frequencies.clone());
             limited_frequency.1.x_axis_max = Some(min_f);
             plots.push((format!("frequency_to_{}.svg", min_f), limited_frequency));
+        }
+
+        if cfg.plots.coverage {
+            let coverage_depths = allele_data.totals;
+            let coverage_histogram = kuva_histogram(coverage_depths, 50);
+            plots.push((String::from("coverage_histogram.svg"), coverage_histogram));
+        }
+
+        if cfg.plots.confidence {
+            let confidences = allele_data
+                .confidence_not_mac_errs
+                .into_iter()
+                .flatten()
+                .collect();
+            let confidence_histogram = kuva_histogram(confidences, 50);
+            plots.push((
+                String::from("confidence_histogram.svg"),
+                confidence_histogram,
+            ));
         }
     }
 

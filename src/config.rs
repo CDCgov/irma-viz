@@ -30,7 +30,7 @@ pub struct PlotsConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct OutputConfig {
-    pub path: String,
+    pub path: PathBuf,
     pub width: u32,
     pub height: u32,
 }
@@ -45,7 +45,7 @@ pub struct PlottingArgs {
 
     /// Output SVG path override
     #[arg(long)]
-    pub out: Option<String>,
+    pub out: Option<PathBuf>,
 
     /// Output width override
     #[arg(long)]
