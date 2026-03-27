@@ -1,4 +1,6 @@
-/target
-/original_r_plots
-/brm_examples
-/out
+target/
+original_r_plots/
+brm_examples/
+out/
+*.svg
+Cargo.lock

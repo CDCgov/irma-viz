@@ -33,13 +33,6 @@ fn main() -> Result<()> {
 
     // sankey
     if let Some(read_counts_path) = cfg.plots.sankey_path {
-        // let read_counts_data =
-        //     ReadCountsData::import_from_file(&read_counts_path).with_context(|| {
-        //         format!(
-        //             "Failed to import Read Counts data from: \'{}\'",
-        //             &read_counts_path.display()
-        //         )
-        //     })?;
         let sankey_edges = SankeyVec::import_from_file(&read_counts_path)
             .with_context(|| {
                 format!(
@@ -101,9 +94,9 @@ fn main() -> Result<()> {
             )
         })?;
 
-        let coverages = coverage_data.coverages;
+        let _coverages = coverage_data.coverages;
 
-        println!("{:?}", &coverages[0..10]);
+        // eprintln!("{:?}", &coverages[0..10]);
     }
 
     Ok(())
