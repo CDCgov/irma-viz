@@ -14,11 +14,11 @@ pub struct ReadCountsLine {
 #[derive(Debug)]
 #[allow(unused)]
 /// TODO: Docs
-pub struct ReadCountsData {
+pub struct ReadCounts {
     pub record_data_map: HashMap<String, Option<f64>>,
 }
 
-impl ReadCountsData {
+impl ReadCounts {
     #[allow(unused)]
     /// TODO: Docs
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
@@ -33,7 +33,7 @@ impl ReadCountsData {
             record_data_map.insert(line.record, line.read);
         }
 
-        Ok(ReadCountsData { record_data_map })
+        Ok(ReadCounts { record_data_map })
     }
 }
 

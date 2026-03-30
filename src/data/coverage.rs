@@ -16,16 +16,16 @@ pub struct CoverageLine {
 
 #[derive(Debug)]
 /// TODO: Docs
-pub struct CoverageData {
+pub struct Coverage {
     pub positions: Vec<usize>,
     pub coverages: Vec<usize>,
     pub consensuses: Vec<Option<u8>>,
 }
 
-impl CoverageData {
+impl Coverage {
     /// TODO: Docs
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
-        let mut coverage_data = CoverageData {
+        let mut coverage_data = Coverage {
             positions: Vec::new(),
             coverages: Vec::new(),
             consensuses: Vec::new(),

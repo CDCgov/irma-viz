@@ -2,7 +2,7 @@
 
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAllelesData, CoverageData, SankeyVec},
+    data::{AllAlleles, Coverage, SankeyVec},
     plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
 };
 use anyhow::{Context, Result};
@@ -47,13 +47,12 @@ fn main() -> Result<()> {
 
     // heuristics
     if let Some(all_alleles_path) = cfg.plots.heuristics_path {
-        let allele_data =
-            AllAllelesData::import_from_file(&all_alleles_path).with_context(|| {
-                format!(
-                    "Failed to import All Alleles data from \'{}\'",
-                    &all_alleles_path.display()
-                )
-            })?;
+        let allele_data = AllAlleles::import_from_file(&all_alleles_path).with_context(|| {
+            format!(
+                "Failed to import All Alleles data from \'{}\'",
+                &all_alleles_path.display()
+            )
+        })?;
 
         let avg_qualities = allele_data
             .average_qualities
@@ -87,7 +86,7 @@ fn main() -> Result<()> {
 
     // Coverage API demo
     if let Some(coverage_path) = cfg.plots.coverage_path {
-        let coverage_data = CoverageData::import_from_file(&coverage_path).with_context(|| {
+        let coverage_data = Coverage::import_from_file(&coverage_path).with_context(|| {
             format!(
                 "Failed to import Coverage data from \'{}\'",
                 &coverage_path.display()

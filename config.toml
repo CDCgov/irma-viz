@@ -1,6 +1,5 @@
 # TODO: Docs
 [plots]
-heuristics_path = "test_data/A_PA-allAlleles.txt"
 density_average = true
 density_8 = true
 density_observed = true
@@ -9,6 +8,9 @@ coverage = false
 confidence = false
 sankey_path = "test_data/READ_COUNTS.txt"
 coverage_path = "test_data/A_PA-coverage.txt"
+heuristics_path = "test_data/A_PA-allAlleles.txt"
+variants_path = "test_data/A_PA-variants.txt"
+pairing_stats_path = "test_data/A_PA-pairingStats.txt"
 
 [output]
 path = "out/"

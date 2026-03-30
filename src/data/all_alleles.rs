@@ -10,15 +10,15 @@ struct AllAllelesLine {
     average_quality: Option<f64>,
 }
 /// TODO: Docs
-pub struct AllAllelesData {
+pub struct AllAlleles {
     pub frequencies: Vec<f64>,
     pub average_qualities: Vec<Option<f64>>,
 }
 
-impl AllAllelesData {
+impl AllAlleles {
     /// TODO: Docs
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
-        let mut all_alleles_data = AllAllelesData {
+        let mut all_alleles_data = AllAlleles {
             frequencies: Vec::new(),
             average_qualities: Vec::new(),
         };
