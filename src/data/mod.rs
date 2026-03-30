@@ -18,3 +18,19 @@ where
         _ => s.parse::<f64>().map(Some).map_err(D::Error::custom),
     }
 }
+
+/// TODO: Docs
+fn option_allele_byte<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+
+    match s {
+        "-" => Ok(None),
+        "A" | "C" | "G" | "T" => Ok(Some(s.as_bytes()[0])),
+        _ => Err(D::Error::custom(
+            "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", or \"-\".",
+        )),
+    }
+}

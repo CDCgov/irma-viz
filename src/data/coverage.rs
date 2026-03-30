@@ -1,3 +1,4 @@
+use crate::data::*;
 use std::path::PathBuf;
 
 // TODO: find out what is needed for `coverageDiagram.r`
@@ -9,6 +10,8 @@ pub struct CoverageLine {
     pub position: usize,
     #[serde(rename = "Coverage Depth")]
     pub coverage: usize,
+    #[serde(rename = "Consensus", deserialize_with = "option_allele_byte")]
+    pub consensus: Option<u8>,
 }
 
 #[derive(Debug)]
@@ -16,6 +19,7 @@ pub struct CoverageLine {
 pub struct CoverageData {
     pub positions: Vec<usize>,
     pub coverages: Vec<usize>,
+    pub consensuses: Vec<Option<u8>>,
 }
 
 impl CoverageData {
@@ -24,6 +28,7 @@ impl CoverageData {
         let mut coverage_data = CoverageData {
             positions: Vec::new(),
             coverages: Vec::new(),
+            consensuses: Vec::new(),
         };
 
         let mut coverage_reader = csv::ReaderBuilder::new()
@@ -33,7 +38,8 @@ impl CoverageData {
         for line in coverage_reader.deserialize() {
             let line: CoverageLine = line?;
             coverage_data.positions.push(line.position);
-            coverage_data.coverages.push(line.coverage)
+            coverage_data.coverages.push(line.coverage);
+            coverage_data.consensuses.push(line.consensus);
         }
 
         Ok(coverage_data)
