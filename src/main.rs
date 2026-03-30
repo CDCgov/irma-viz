@@ -2,7 +2,7 @@
 
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAlleles, Coverage, PairingStats, SankeyVec},
+    data::{AllAlleles, Coverage, PairingStats, SankeyVec, Variants},
     plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
 };
 use anyhow::{Context, Result};
@@ -107,6 +107,22 @@ fn main() -> Result<()> {
             })?;
 
         let _ps_data_example = pairing_stats.data.get("Observations");
+    }
+
+    // Variants API demo
+    if let Some(variants_path) = cfg.plots.variants_path {
+        let variants = Variants::import_from_file(&variants_path).with_context(|| {
+            format!(
+                "Failed to import Variants data from \'{}\'",
+                &variants_path.display()
+            )
+        })?;
+
+        if let Some((_con_allele_ex, _min_allele_ex)) = variants.data.get(&0) {
+            // println!("Some variant exists!")
+        } else {
+            // println!("No variants exist!")
+        }
     }
 
     Ok(())
