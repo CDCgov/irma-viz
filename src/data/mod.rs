@@ -32,9 +32,9 @@ where
 
     match s {
         "-" => Ok(None),
-        "A" | "C" | "G" | "T" => Ok(Some(s.as_bytes()[0])),
+        "A" | "C" | "G" | "T" | "N" => Ok(Some(s.as_bytes()[0])),
         _ => Err(D::Error::custom(
-            "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", or \"-\".",
+            "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", \"N\", or \"-\".",
         )),
     }
 }

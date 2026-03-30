@@ -2,7 +2,7 @@
 
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAlleles, Coverage, SankeyVec},
+    data::{AllAlleles, Coverage, PairingStats, SankeyVec},
     plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
 };
 use anyhow::{Context, Result};
@@ -94,8 +94,19 @@ fn main() -> Result<()> {
         })?;
 
         let _coverages = coverage_data.coverages;
+    }
 
-        // eprintln!("{:?}", &coverages[0..10]);
+    // Pairing Stats API demo
+    if let Some(pairing_stats_path) = cfg.plots.pairing_stats_path {
+        let pairing_stats =
+            PairingStats::import_from_file(&pairing_stats_path).with_context(|| {
+                format!(
+                    "Failed to import Pairing Stats data from \'{}\'",
+                    &pairing_stats_path.display()
+                )
+            })?;
+
+        let _ps_data_example = pairing_stats.data.get("Observations");
     }
 
     Ok(())

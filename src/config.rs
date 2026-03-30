@@ -23,6 +23,7 @@ pub struct PlotsConfig {
     pub confidence: bool,
     pub sankey_path: Option<PathBuf>,
     pub coverage_path: Option<PathBuf>,
+    pub pairing_stats_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
