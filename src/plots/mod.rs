@@ -1,11 +1,14 @@
-pub mod heuristics;
-pub mod sankey;
 use anyhow::Context;
 use kuva::{
     prelude::{Layout, Plot},
     render_to_svg,
 };
 use std::path::Path;
+
+pub mod heuristics;
+pub mod sankey;
+
+pub use heuristics::*;
 
 pub fn render_plots(
     plots: Vec<(String, (Vec<Plot>, Layout))>,
@@ -21,5 +24,3 @@ pub fn render_plots(
 
     Ok(())
 }
-
-pub use heuristics::*;

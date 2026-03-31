@@ -11,6 +11,7 @@ coverage_path = "test_data/A_PA-coverage.txt"
 heuristics_path = "test_data/A_PA-allAlleles.txt"
 variants_path = "test_data/A_PA-variants.txt"
 pairing_stats_path = "test_data/A_PA-pairingStats.txt"
+sqm_path = "test_data/A_PA-EXPENRD.sqm"
 
 [output]
 path = "out/"

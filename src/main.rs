@@ -2,7 +2,7 @@
 
 use crate::{
     config::{PlottingArgs, apply_cli_overrides},
-    data::{AllAlleles, Coverage, PairingStats, SankeyVec, Variants},
+    data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{heuristics::kuva_density, load_config, render_plots, sankey::kuva_sankey},
 };
 use anyhow::{Context, Result};
@@ -123,6 +123,19 @@ fn main() -> Result<()> {
         } else {
             // println!("No variants exist!")
         }
+    }
+
+    // Matrix API demo
+    if let Some(sqm_path) = cfg.plots.sqm_path {
+        let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
+            format!(
+                "Failed to import Square Matrix data from \'{}\'",
+                &sqm_path.display()
+            )
+        })?;
+
+        let _var_label = &sqm.labels[0];
+        let _var_dists = &sqm.matrix[0];
     }
 
     Ok(())

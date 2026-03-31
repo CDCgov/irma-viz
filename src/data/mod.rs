@@ -1,14 +1,18 @@
+use serde::{Deserialize, de::Error};
+
 pub mod all_alleles;
 pub mod coverage;
-pub mod read_counts;
-pub mod variants;
-pub use variants::*;
 pub mod pairing_stats;
+pub mod read_counts;
+pub mod square_matrix;
+pub mod variants;
+
 pub use all_alleles::*;
 pub use coverage::*;
 pub use pairing_stats::*;
 pub use read_counts::*;
-use serde::{Deserialize, de::Error};
+pub use square_matrix::*;
+pub use variants::*;
 
 /// TODO: Docs
 fn option_float<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
