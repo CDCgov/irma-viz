@@ -19,7 +19,6 @@ pub fn kuva_density(data: Vec<f64>) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
-#[allow(unused)]
 pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> (Vec<Plot>, Layout) {
     let min = data.iter().cloned().fold(f64::INFINITY, f64::min);
     let max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);

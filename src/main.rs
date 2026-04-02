@@ -4,7 +4,8 @@ use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{
-        heuristics::kuva_density, kuva_histogram, load_config, render_plots, sankey::kuva_sankey,
+        heatmap::kuva_heatmap, heuristics::kuva_density, kuva_histogram, load_config, render_plots,
+        sankey::kuva_sankey, variant_tree::kuva_tree,
     },
 };
 use anyhow::{Context, Result};
@@ -35,15 +36,13 @@ fn main() -> Result<()> {
 
     // sankey
     if let Some(read_counts_path) = cfg.plots.sankey_path {
-        let sankey_edges = SankeyVec::import_from_file(&read_counts_path)
-            .with_context(|| {
-                format!(
-                    "Failed to import Read Counts data from: \'{}\'",
-                    &read_counts_path.display()
-                )
-            })?
-            .edges;
-        let sankey = kuva_sankey(sankey_edges);
+        let sankey_vec = SankeyVec::import_from_file(&read_counts_path).with_context(|| {
+            format!(
+                "Failed to import Read Counts data from: \'{}\'",
+                &read_counts_path.display()
+            )
+        })?;
+        let sankey = kuva_sankey(sankey_vec);
         plots.push((String::from("sankey.svg"), sankey));
     }
 
@@ -103,6 +102,22 @@ fn main() -> Result<()> {
         }
     }
 
+    // heatmap and variant phase clustering tree
+    if let Some(sqm_path) = cfg.plots.sqm_path {
+        let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
+            format!(
+                "Failed to import Square Matrix data from \'{}\'",
+                &sqm_path.display()
+            )
+        })?;
+
+        let heatmap = kuva_heatmap(sqm.clone());
+        plots.push((String::from("EXPENRD.svg"), heatmap));
+
+        let tree = kuva_tree(sqm);
+        plots.push((String::from("variants_tree.svg"), tree));
+    }
+
     render_plots(plots, &cfg.output.path)?;
 
     // Coverage API demo
@@ -144,19 +159,6 @@ fn main() -> Result<()> {
         } else {
             // println!("No variants exist!")
         }
-    }
-
-    // Matrix API demo
-    if let Some(sqm_path) = cfg.plots.sqm_path {
-        let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
-            format!(
-                "Failed to import Square Matrix data from \'{}\'",
-                &sqm_path.display()
-            )
-        })?;
-
-        let _var_label = &sqm.labels[0];
-        let _var_dists = &sqm.matrix[0];
     }
 
     Ok(())
