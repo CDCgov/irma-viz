@@ -4,7 +4,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Debug, serde::Deserialize)]
 /// TODO: Docs
-pub struct ReadCountsLine {
+struct ReadCountsLine {
     #[serde(rename = "Record")]
     pub record: String,
     #[serde(rename = "Reads", deserialize_with = "option_float")]

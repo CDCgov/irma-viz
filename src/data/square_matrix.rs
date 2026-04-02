@@ -44,7 +44,7 @@ impl SquareMatrix {
         let row = split_line
             .map(|x| {
                 x.parse::<f64>()
-                    .with_context(|| "Unable to parse \"{x}\" as float.")
+                    .with_context(|| format!("Unable to parse \"{x}\" as float."))
             })
             .collect::<Result<Vec<_>, _>>()?;
 

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 // Can also change type to float if needed for kuva to avoid later casting
 #[derive(Debug, serde::Deserialize)]
 /// TODO: Docs
-pub struct CoverageLine {
+struct CoverageLine {
     #[serde(rename = "Position")]
     pub position: usize,
     #[serde(rename = "Coverage Depth")]

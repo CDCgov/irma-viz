@@ -2,7 +2,7 @@ use crate::data::*;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(serde::Deserialize)]
-pub struct VariantsLine {
+struct VariantsLine {
     #[serde(rename = "Position")]
     position: usize,
     #[serde(rename = "Consensus_Allele", deserialize_with = "option_allele_byte")]
