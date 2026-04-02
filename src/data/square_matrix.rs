@@ -1,5 +1,4 @@
 use anyhow::Context;
-use kodama::{Method, linkage};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -40,7 +39,7 @@ impl SquareMatrix {
     fn parse_line(line: &str) -> anyhow::Result<(String, Vec<f64>)> {
         let mut split_line = line.split('\t');
 
-        // No panic: line is checked for empty before passed to this func.
+        // No panic: line is checked for empty before passed to this func
         let label = split_line.next().expect("Line should not be empty.");
 
         let row = split_line
@@ -53,26 +52,4 @@ impl SquareMatrix {
         Ok((label.to_string(), row))
     }
 
-    fn condensed_matrix(&self) -> Vec<f64> {
-        let mut condensed = Vec::with_capacity(self.matrix.len() * (self.matrix.len() - 1) / 2);
-
-        for (row_ind, row) in self.matrix.iter().enumerate() {
-            for col in row.iter().skip(row_ind + 1) {
-                condensed.push(*col);
-            }
-        }
-
-        condensed
-    }
-
-    pub fn newick(&self) -> String {
-        let mut condensed_matrix = self.condensed_matrix();
-        let dendrogram = linkage(&mut condensed_matrix, self.matrix.len(), Method::Single);
-
-        for step in dendrogram.steps() {
-            if step.
-        }
-
-        String::new()
-    }
 }
