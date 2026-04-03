@@ -35,6 +35,7 @@ pub fn kuva_heatmap(mut data: SquareMatrix) -> (Vec<Plot>, Layout) {
                 .collect()
         })
         .collect();
+
     let mut y_labels = data.labels.clone();
     y_labels.reverse();
     data.matrix.reverse();

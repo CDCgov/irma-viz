@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -19,6 +19,7 @@ impl SquareMatrix {
         let mut matrix = Vec::new();
 
         let sqm_reader = BufReader::new(File::open(filename)?).lines();
+        let mut row_num = 0;
         for (line_num, line) in sqm_reader.enumerate() {
             let line = line?;
             if line.is_empty() {
@@ -30,6 +31,20 @@ impl SquareMatrix {
 
             labels.push(label);
             matrix.push(row);
+
+            let prev_row = line_num.saturating_sub(1);
+            if matrix[prev_row].len() != matrix[row_num].len() {
+                return Err(anyhow!("Matrix is not square."));
+            }
+            row_num += 1;
+        }
+
+        if matrix.is_empty() {
+            return Err(anyhow!("Matrix is empty."));
+        } else if matrix.len() != matrix[0].len() {
+            // No indexing panic, checks for empty matrix in previous arm.
+            // All rows should be equal length based on earlier check.
+            return Err(anyhow!("Matrix is not square."));
         }
 
         Ok(SquareMatrix { labels, matrix })
@@ -51,5 +66,4 @@ impl SquareMatrix {
 
         Ok((label.to_string(), row))
     }
-
-}
+ }
