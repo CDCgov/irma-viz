@@ -4,8 +4,8 @@ use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{
-        heatmap::kuva_heatmap, heuristics::kuva_density, kuva_histogram, load_config, render_plots,
-        sankey::kuva_sankey, variant_tree::kuva_tree,
+        clustermap::kuva_clustermap, heuristics::kuva_density, kuva_histogram, load_config,
+        render_plots, sankey::kuva_sankey
     },
 };
 use anyhow::{Context, Result};
@@ -111,11 +111,8 @@ fn main() -> Result<()> {
             )
         })?;
 
-        let heatmap = kuva_heatmap(sqm.clone());
-        plots.push((String::from("EXPENRD.svg"), heatmap));
-
-        let tree = kuva_tree(sqm);
-        plots.push((String::from("variants_tree.svg"), tree));
+        let clustermap = kuva_clustermap(sqm.clone());
+        plots.push((String::from("EXPENRD.svg"), clustermap));
     }
 
     render_plots(plots, &cfg.output.path)?;

@@ -5,10 +5,9 @@ use kuva::{
 };
 use std::path::Path;
 
+pub mod clustermap;
 pub mod heuristics;
 pub mod sankey;
-pub mod heatmap;
-pub mod variant_tree;
 
 pub use heuristics::*;
 
