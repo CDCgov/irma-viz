@@ -8,6 +8,7 @@ use std::path::Path;
 pub mod clustermap;
 pub mod heuristics;
 pub mod sankey;
+pub mod coverage;
 
 pub use heuristics::*;
 

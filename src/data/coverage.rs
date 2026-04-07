@@ -1,4 +1,5 @@
 use crate::data::*;
+use anyhow::anyhow;
 use std::path::PathBuf;
 
 // TODO: find out what is needed for `coverageDiagram.r`
@@ -6,28 +7,26 @@ use std::path::PathBuf;
 #[derive(Debug, serde::Deserialize)]
 /// TODO: Docs
 struct CoverageLine {
-    #[serde(rename = "Position")]
-    pub position: usize,
-    #[serde(rename = "Coverage Depth")]
-    pub coverage: usize,
+    #[serde(rename = "Position", deserialize_with = "option_float")]
+    pub position: Option<f64>,
+    #[serde(rename = "Coverage Depth", deserialize_with = "option_float")]
+    pub coverage: Option<f64>,
     #[serde(rename = "Consensus", deserialize_with = "option_allele_byte")]
     pub consensus: Option<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// TODO: Docs
 pub struct Coverage {
-    pub positions: Vec<usize>,
-    pub coverages: Vec<usize>,
+    pub coverage_by_position: Vec<(f64, f64)>,
     pub consensuses: Vec<Option<u8>>,
 }
 
 impl Coverage {
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &PathBuf) -> anyhow::Result<Self> {
         let mut coverage_data = Coverage {
-            positions: Vec::new(),
-            coverages: Vec::new(),
+            coverage_by_position: Vec::new(),
             consensuses: Vec::new(),
         };
 
@@ -37,9 +36,18 @@ impl Coverage {
 
         for line in coverage_reader.deserialize() {
             let line: CoverageLine = line?;
-            coverage_data.positions.push(line.position);
-            coverage_data.coverages.push(line.coverage);
-            coverage_data.consensuses.push(line.consensus);
+
+            match (line.position, line.coverage) {
+                (Some(pos), Some(cov)) => {
+                    coverage_data.coverage_by_position.push((pos, cov));
+                    coverage_data.consensuses.push(line.consensus);
+                }
+                _ => continue,
+            }
+        }
+
+        if coverage_data.coverage_by_position.is_empty() || coverage_data.consensuses.is_empty() {
+            return Err(anyhow!("File has no data."));
         }
 
         Ok(coverage_data)

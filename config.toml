@@ -7,9 +7,9 @@ observed_8 = true
 coverage = true
 confidence = true
 sankey_path = "test_data/READ_COUNTS.txt"
-coverage_path = "test_data/A_PA-coverage.txt"
+coverage_path = "test_data/A_HA_H3-coverage.txt"
 heuristics_path = "test_data/A_PA-allAlleles.txt"
-variants_path = "test_data/A_PA-variants.txt"
+variants_path = "test_data/A_HA_H3-variants.txt"
 pairing_stats_path = "test_data/A_PA-pairingStats.txt"
 sqm_path = "test_data/A_NP-EXPENRD.sqm"
 

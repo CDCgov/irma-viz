@@ -1,5 +1,0 @@
-A_PA	Observations	781571
-A_PA	ExpectedErrorRate	0.000507951292972743
-A_PA	MinimumExpectedVariation	0.00105812523750241
-A_PA	MinimumDeletionErrorRate	6.39737144801944e-06
-A_PA	MinimumInsertionErrorRate	0.5

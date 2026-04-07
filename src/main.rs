@@ -4,8 +4,8 @@ use crate::{
     config::{PlottingArgs, apply_cli_overrides},
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{
-        clustermap::kuva_clustermap, heuristics::kuva_density, kuva_histogram, load_config,
-        render_plots, sankey::kuva_sankey
+        clustermap::kuva_clustermap, coverage::kuva_coverage, heuristics::kuva_density,
+        kuva_histogram, load_config, render_plots, sankey::kuva_sankey,
     },
 };
 use anyhow::{Context, Result};
@@ -115,10 +115,9 @@ fn main() -> Result<()> {
         plots.push((String::from("EXPENRD.svg"), clustermap));
     }
 
-    render_plots(plots, &cfg.output.path)?;
-
-    // Coverage API demo
-    if let Some(coverage_path) = cfg.plots.coverage_path {
+    if let (Some(coverage_path), Some(variants_path)) =
+        (cfg.plots.coverage_path, cfg.plots.variants_path)
+    {
         let coverage_data = Coverage::import_from_file(&coverage_path).with_context(|| {
             format!(
                 "Failed to import Coverage data from \'{}\'",
@@ -126,8 +125,18 @@ fn main() -> Result<()> {
             )
         })?;
 
-        let _coverages = coverage_data.coverages;
+        let variants = Variants::import_from_file(&variants_path).with_context(|| {
+            format!(
+                "Failed to import Variants data from \'{}\'",
+                &variants_path.display()
+            )
+        })?;
+
+        let coverage_plot = kuva_coverage(coverage_data, variants);
+        plots.push((String::from("coverage.svg"), coverage_plot))
     }
+
+    render_plots(plots, &cfg.output.path)?;
 
     // Pairing Stats API demo
     if let Some(pairing_stats_path) = cfg.plots.pairing_stats_path {
@@ -140,22 +149,6 @@ fn main() -> Result<()> {
             })?;
 
         let _ps_data_example = pairing_stats.data.get("Observations");
-    }
-
-    // Variants API demo
-    if let Some(variants_path) = cfg.plots.variants_path {
-        let variants = Variants::import_from_file(&variants_path).with_context(|| {
-            format!(
-                "Failed to import Variants data from \'{}\'",
-                &variants_path.display()
-            )
-        })?;
-
-        if let Some((_con_allele_ex, _min_allele_ex)) = variants.data.get(&0) {
-            // println!("Some variant exists!")
-        } else {
-            // println!("No variants exist!")
-        }
     }
 
     Ok(())
