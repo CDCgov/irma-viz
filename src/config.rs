@@ -28,11 +28,10 @@ pub struct PlotsConfig {
     pub sqm_path: Option<PathBuf>,
 }
 
+// to-do: add subplot configs
 #[derive(Debug, Deserialize)]
 pub struct OutputConfig {
     pub path: PathBuf,
-    pub width: u32,
-    pub height: u32,
 }
 
 /// These are for overriding settings from the config.toml
@@ -46,14 +45,6 @@ pub struct PlottingArgs {
     /// Output SVG path override
     #[arg(long)]
     pub out: Option<PathBuf>,
-
-    /// Output width override
-    #[arg(long)]
-    pub width: Option<u32>,
-
-    /// Output height override
-    #[arg(long)]
-    pub height: Option<u32>,
 
     #[command(flatten)]
     pub enabled_plots: PlotToggles,
@@ -114,12 +105,6 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
     // output overrides
     if let Some(out) = &args.out {
         cfg.output.path = out.clone();
-    }
-    if let Some(w) = args.width {
-        cfg.output.width = w;
-    }
-    if let Some(h) = args.height {
-        cfg.output.height = h;
     }
 
     // plot overrides

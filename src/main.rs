@@ -16,6 +16,9 @@ mod config;
 mod data;
 mod plots;
 
+// taken from IRMA_RES/scripts/heuristicDiagram.R
+const NUM_BINS: usize = 50;
+
 fn main() -> Result<()> {
     let cli = PlottingArgs::parse();
 
@@ -60,31 +63,59 @@ fn main() -> Result<()> {
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
-        let density = kuva_density(avg_qualities.clone());
-        plots.push((String::from("density.svg"), density));
+        let density = kuva_density(
+            avg_qualities.clone(),
+            cfg.constants.min_aq,
+            "Density of average allele quality",
+        );
+        plots.push((String::from("allele_quality_density.svg"), density));
 
         // quality density subplot
         if let Some(min_aq) = cfg.constants.min_aq {
-            let mut limited_density = kuva_density(avg_qualities.clone());
+            let mut limited_density = kuva_density(
+                avg_qualities.clone(),
+                None,
+                &format!("Density of average allele quality to {}", min_aq),
+            );
             limited_density.1.x_axis_max = Some(min_aq);
-            plots.push((format!("density_to_{}.svg", min_aq), limited_density));
+            plots.push((
+                format!("allele_quality_density_to_{}.svg", min_aq),
+                limited_density,
+            ));
         }
 
         if cfg.plots.density_observed {
             let observed_densities = allele_data.frequencies.clone();
-            let observed_frequency = kuva_density(observed_densities);
-            plots.push((String::from("frequency.svg"), observed_frequency));
+            let observed_frequency = kuva_density(
+                observed_densities,
+                cfg.constants.min_f,
+                "Density of observed frequency",
+            );
+            plots.push((
+                String::from("observed_frequency_density.svg"),
+                observed_frequency,
+            ));
         }
 
-        if let Some(min_f) = cfg.constants.min_f {
-            let mut limited_frequency = kuva_density(allele_data.frequencies.clone());
+        if cfg.plots.observed_8
+            && let Some(min_f) = cfg.constants.min_f
+        {
+            let mut limited_frequency = kuva_density(
+                allele_data.frequencies.clone(),
+                None,
+                &format!("Density of observed frequency (to {}%)", min_f),
+            );
             limited_frequency.1.x_axis_max = Some(min_f);
-            plots.push((format!("frequency_to_{}.svg", min_f), limited_frequency));
+            plots.push((
+                format!("observed_frequency_density_to_{}.svg", min_f),
+                limited_frequency,
+            ));
         }
 
         if cfg.plots.coverage {
             let coverage_depths = allele_data.totals;
-            let coverage_histogram = kuva_histogram(coverage_depths, 50);
+            let coverage_histogram =
+                kuva_histogram(coverage_depths, NUM_BINS, None, "Histogram of coverage");
             plots.push((String::from("coverage_histogram.svg"), coverage_histogram));
         }
 
@@ -94,7 +125,12 @@ fn main() -> Result<()> {
                 .into_iter()
                 .flatten()
                 .collect();
-            let confidence_histogram = kuva_histogram(confidences, 50);
+            let confidence_histogram = kuva_histogram(
+                confidences,
+                NUM_BINS,
+                cfg.constants.min_conf,
+                "Histogram of confidence not machine error, non-zero",
+            );
             plots.push((
                 String::from("confidence_histogram.svg"),
                 confidence_histogram,
@@ -115,31 +151,23 @@ fn main() -> Result<()> {
         plots.push((String::from("EXPENRD.svg"), clustermap));
     }
 
-    if let (Some(coverage_path), Some(variants_path)) =
-        (cfg.plots.coverage_path, cfg.plots.variants_path)
-    {
+    if let (Some(coverage_path), Some(variants_path), Some(pairing_stats_path)) = (
+        cfg.plots.coverage_path,
+        cfg.plots.variants_path,
+        cfg.plots.pairing_stats_path,
+    ) {
         let coverage_data = Coverage::import_from_file(&coverage_path).with_context(|| {
             format!(
                 "Failed to import Coverage data from \'{}\'",
                 &coverage_path.display()
             )
         })?;
-
         let variants = Variants::import_from_file(&variants_path).with_context(|| {
             format!(
                 "Failed to import Variants data from \'{}\'",
                 &variants_path.display()
             )
         })?;
-
-        let coverage_plot = kuva_coverage(coverage_data, variants);
-        plots.push((String::from("coverage.svg"), coverage_plot))
-    }
-
-    render_plots(plots, &cfg.output.path)?;
-
-    // Pairing Stats API demo
-    if let Some(pairing_stats_path) = cfg.plots.pairing_stats_path {
         let pairing_stats =
             PairingStats::import_from_file(&pairing_stats_path).with_context(|| {
                 format!(
@@ -148,8 +176,11 @@ fn main() -> Result<()> {
                 )
             })?;
 
-        let _ps_data_example = pairing_stats.data.get("Observations");
+        let coverage_plot = kuva_coverage(coverage_data, variants, pairing_stats);
+        plots.push((String::from("coverage.svg"), coverage_plot))
     }
+
+    render_plots(plots, &cfg.output.path)?;
 
     Ok(())
 }

@@ -202,7 +202,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 [[package]]
 name = "kuva"
 version = "0.1.6"
-source = "git+https://github.com/Psy-Fer/kuva?branch=dev#4a2034ea41698b47e7d758b6093f73b299d538ea"
+source = "git+https://github.com/Psy-Fer/kuva?branch=dev#9e0bdbe081216785048ae78382f7d919adbaee28"
 dependencies = [
  "chrono",
  "colorous",
