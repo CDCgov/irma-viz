@@ -1,19 +1,16 @@
 # TODO: Docs
-[plots]
-density_average = true
-density_8 = true
-density_observed = true
-observed_8 = true
-coverage = true
-confidence = true
+[targets]
+list = ["A_PA"]
 
-[default_data_paths]
-sankey_path = "test_data/READ_COUNTS.txt"
-coverage_path = "test_data/A_PA-coverage.txt"
-heuristics_path = "test_data/A_PA-allAlleles.txt"
-variants_path = "test_data/A_PA-variants.txt"
-pairing_stats_path = "test_data/A_PA-pairingStats.txt"
-sqm_path = "test_data/A_NP-EXPENRD.sqm"
+[plot_toggles]
+read_percentages = true
+clustermap = true
+heuristics = true
+coverage = true
+
+[input]
+data_path = "test_data/"
+matrix_path = "test_data/"
 
 [output]
 path = "out/"

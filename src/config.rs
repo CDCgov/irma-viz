@@ -1,31 +1,57 @@
+use anyhow::Context;
 use clap::Parser;
-use kuva::plot::LineStyle;
 use serde_derive::Deserialize;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
-/// (I think) we will want to have separate configuration options for each plot
+// (I think) we will want to have separate configuration options for each plot
+
+/// These are for overriding settings from the config.toml
+#[derive(Debug, Parser)]
+#[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
+pub struct Args {
+    /// Path to config TOML
+    #[arg(long, default_value = "config.toml")]
+    pub config: String,
+    /// Target organisms to plot
+    #[arg(short, long)]
+    pub targets: Vec<String>,
+    /// Output SVG path override
+    #[arg(long)]
+    pub out: Option<PathBuf>,
+    /// Which figures to plot
+    #[command(flatten)]
+    pub enabled_plots: PlotToggleArgs,
+    /// Constants for heuristic plot
+    #[command(flatten)]
+    pub heuristics_args: HeuristicsArgs,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub plots: PlotsConfig,
+    pub targets: Targets,
+    pub input: InputConfig,
     pub output: OutputConfig,
+    pub plot_toggles: PlotToggles,
     pub constants: HeuristicsArgs,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct PlotsConfig {
-    pub heuristics_path: Option<PathBuf>,
-    pub density_average: bool,
-    pub density_8: bool,
-    pub density_observed: bool,
-    pub observed_8: bool,
+pub struct Targets {
+    pub list: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlotToggles {
+    pub read_percentages: bool,
+    pub heuristics: bool,
     pub coverage: bool,
-    pub confidence: bool,
-    pub sankey_path: Option<PathBuf>,
-    pub coverage_path: Option<PathBuf>,
-    pub pairing_stats_path: Option<PathBuf>,
-    pub variants_path: Option<PathBuf>,
-    pub sqm_path: Option<PathBuf>,
+    pub clustermap: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InputConfig {
+    pub data_path: PathBuf,
+    pub matrix_path: PathBuf,
 }
 
 // to-do: add subplot configs
@@ -34,63 +60,30 @@ pub struct OutputConfig {
     pub path: PathBuf,
 }
 
-/// These are for overriding settings from the config.toml
-#[derive(Debug, Parser)]
-#[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
-pub struct PlottingArgs {
-    /// Path to config TOML
-    #[arg(long, default_value = "config.toml")]
-    pub config: String,
-
-    /// Output SVG path override
-    #[arg(long)]
-    pub out: Option<PathBuf>,
-
-    #[command(flatten)]
-    pub enabled_plots: PlotToggles,
-    #[command(flatten)]
-    pub heuristics_args: HeuristicsArgs,
-}
-
 // toggles for enabling/disabling to override the config
 // if these flags aren't used, the default will stick
 // e.g.
 //   `--density-average true`
 #[derive(Debug, Parser)]
-pub struct PlotToggles {
+pub struct PlotToggleArgs {
     #[arg(long)]
-    pub density_average: Option<bool>,
-
+    pub read_percentages: Option<bool>,
     #[arg(long)]
-    pub density_8: Option<bool>,
-
-    #[arg(long)]
-    pub density_observed: Option<bool>,
-
-    #[arg(long)]
-    pub observed_8: Option<bool>,
-
+    pub heuristics: Option<bool>,
     #[arg(long)]
     pub coverage: Option<bool>,
-
     #[arg(long)]
-    pub confidence: Option<bool>,
+    pub clustermap: Option<bool>,
 }
 
 #[derive(Debug, Parser, Deserialize)]
 pub struct HeuristicsArgs {
     #[arg(long)]
-    pub heuristics_path: Option<PathBuf>,
-
-    #[arg(long)]
     pub min_aq: Option<f64>,
-
     #[arg(long)]
     pub min_f: Option<f64>,
-
     #[arg(long)]
     pub min_tcc: Option<f64>,
-
     #[arg(long)]
     pub min_conf: Option<f64>,
 }
@@ -101,7 +94,7 @@ fn merge_plot_bool(target: &mut bool, override_val: Option<bool>) {
     }
 }
 
-pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
+pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     // output overrides
     if let Some(out) = &args.out {
         cfg.output.path = out.clone();
@@ -109,28 +102,24 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &PlottingArgs) -> Config {
 
     // plot overrides
     merge_plot_bool(
-        &mut cfg.plots.density_average,
-        args.enabled_plots.density_average,
+        &mut cfg.plot_toggles.read_percentages,
+        args.enabled_plots.read_percentages,
     );
-    merge_plot_bool(&mut cfg.plots.density_8, args.enabled_plots.density_8);
     merge_plot_bool(
-        &mut cfg.plots.density_observed,
-        args.enabled_plots.density_observed,
+        &mut cfg.plot_toggles.heuristics,
+        args.enabled_plots.heuristics,
     );
-    merge_plot_bool(&mut cfg.plots.observed_8, args.enabled_plots.observed_8);
-    merge_plot_bool(&mut cfg.plots.coverage, args.enabled_plots.coverage);
-    merge_plot_bool(&mut cfg.plots.confidence, args.enabled_plots.confidence);
+    merge_plot_bool(&mut cfg.plot_toggles.coverage, args.enabled_plots.coverage);
+    merge_plot_bool(
+        &mut cfg.plot_toggles.clustermap,
+        args.enabled_plots.clustermap,
+    );
 
     cfg
 }
 
-#[allow(unused)]
-#[derive(Debug)]
-pub struct LinePlotConfig {
-    pub color: String,
-    pub stroke_width: f32,
-    pub title: String,
-    pub xlabel: String,
-    pub ylabel: String,
-    pub line_style: LineStyle,
+pub fn load_config(path: &str) -> anyhow::Result<Config> {
+    let s = fs::read_to_string(path).with_context(|| format!("Error reading /'{path}/'"))?;
+    let cfg: Config = toml::from_str(&s).with_context(|| format!("Error parsing /'{path}/'"))?;
+    Ok(cfg)
 }

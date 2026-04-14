@@ -1,4 +1,5 @@
-use crate::data::SankeyVec;
+use crate::{config::Config, data::SankeyVec, plots::render_plot};
+use anyhow::Result;
 use kuva::{
     plot::SankeyPlot,
     prelude::{Layout, Plot},
@@ -12,4 +13,10 @@ pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     let plots = vec![sankey.into()];
     let layout = Layout::auto_from_plots(&plots);
     (plots, layout)
+}
+
+pub fn plot_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
+    let (plot, layout) = kuva_sankey(sankey_vec);
+
+    render_plot(("READ_COUNTS.svg", (plot, layout)), cfg.output.path.clone())
 }

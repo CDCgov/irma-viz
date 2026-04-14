@@ -1,29 +1,15 @@
-use crate::config::Config;
-use anyhow::{Context, Result};
+use crate::{config::Config, data::AllAlleles};
+use anyhow::Result;
 use kuva::{plot::Histogram, prelude::*};
-use std::fs;
 
-pub fn load_config(path: &str) -> Result<Config> {
-    let s = fs::read_to_string(path).with_context(|| format!("Reading {path}"))?;
-    let cfg: Config = toml::from_str(&s).with_context(|| format!("Parsing {path}"))?;
-    Ok(cfg)
-}
+pub fn kuva_density(all_alleles: AllAlleles) -> DensityPlot {
+    let data = all_alleles
+        .average_qualities
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
 
-pub fn kuva_density(
-    data: Vec<f64>,
-    reference_line: Option<f64>,
-    title: &str,
-) -> (Vec<Plot>, Layout) {
-    let density = DensityPlot::new().with_data(data).with_color("steelblue");
-    let plots: Vec<Plot> = vec![density.into()];
-    let mut layout = Layout::auto_from_plots(&plots)
-        .with_title(title)
-        .with_x_label("Allele quality")
-        .with_y_label("Density");
-    if let Some(line) = reference_line {
-        layout = layout.with_reference_line(ReferenceLine::vertical(line));
-    }
-    (plots, layout)
+    DensityPlot::new().with_data(data)
 }
 
 #[allow(unused)]
@@ -52,4 +38,8 @@ pub fn kuva_histogram(
         layout = layout.with_reference_line(ReferenceLine::vertical(line))
     }
     (plots, layout)
+}
+
+pub fn plot_heuristics(all_allele_data: &AllAlleles, cfg: &Config) -> Result<()> {
+    Ok(())
 }
