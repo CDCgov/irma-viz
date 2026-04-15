@@ -1,45 +1,128 @@
-use crate::{config::Config, data::AllAlleles};
-use anyhow::Result;
+use crate::{config::Config, data::AllAlleles, plots::render_multiplot};
+use anyhow::{Context, Result};
 use kuva::{plot::Histogram, prelude::*};
 
-pub fn kuva_density(all_alleles: AllAlleles) -> DensityPlot {
-    let data = all_alleles
+const NUM_BINS: usize = 50; // from IRMA
+
+pub fn kuva_density(data: Vec<f64>) -> Result<Vec<Plot>> {
+    if data.is_empty() {
+        anyhow::bail!("Density plot has no data");
+    }
+    Ok(vec![DensityPlot::new().with_data(data).into()])
+}
+
+pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
+    if data.is_empty() {
+        anyhow::bail!("Histogram plot has no data");
+    }
+
+    let (&first, rest) = data
+        .split_first()
+        .expect("Already checked if data is empty.");
+
+    let (min, max) = rest.iter().copied().fold((first, first), |(min, max), x| {
+        let min = if x.total_cmp(&min).is_lt() { x } else { min };
+        let max = if x.total_cmp(&max).is_gt() { x } else { max };
+        (min, max)
+    });
+
+    Ok(vec![
+        Histogram::new()
+            .with_data(data)
+            .with_bins(num_bins)
+            .with_range((min, max))
+            .into(),
+    ])
+}
+
+pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> Result<()> {
+    // constants
+    let min_aq = cfg.constants.min_aq;
+    let min_f = cfg.constants.min_f;
+    let min_conf = cfg.constants.min_conf;
+
+    // Average allele quality density
+    let average_qualities = all_alleles
         .average_qualities
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
+    let aq_density = kuva_density(average_qualities.clone())
+        .with_context(|| "Average Qualities Density subplot")?;
+    let aq_dens_layout = Layout::auto_from_plots(&aq_density)
+        .with_title("Density of average allele quality")
+        .with_reference_line(ReferenceLine::vertical(min_aq))
+        .with_x_axis_min(0.0);
+    // Limited x range Average allele quality density
+    let limited_aq_density = kuva_density(average_qualities)
+        .with_context(|| "Average Qualities Density limited subplot")?;
+    let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
+        .with_title(format!("to {min_aq}"))
+        .with_x_axis_min(0.0)
+        .with_x_axis_max(min_aq);
 
-    DensityPlot::new().with_data(data)
-}
+    // Observed frequency density
+    let frequencies = all_alleles
+        .frequencies
+        .into_iter()
+        .filter(|x| *x < 0.1)
+        .collect::<Vec<_>>();
+    let freq_density =
+        kuva_density(frequencies.clone()).with_context(|| "Frequency Density subplot")?;
+    let freq_dens_layout = Layout::auto_from_plots(&freq_density)
+        .with_title("Density of observed frequency (to 10%)")
+        .with_reference_line(ReferenceLine::vertical(min_f))
+        .with_x_axis_min(0.0);
+    // Limited x range observed frequency density
+    let lim_freq_dens =
+        kuva_density(frequencies).with_context(|| "Frequency Density limited subplot")?;
+    let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
+        .with_title(format!("to {min_f}"))
+        .with_x_axis_max(min_f)
+        .with_x_axis_min(0.0);
 
-#[allow(unused)]
-pub fn kuva_histogram(
-    data: Vec<f64>,
-    num_bins: usize,
-    reference_line: Option<f64>,
-    title: &str,
-) -> (Vec<Plot>, Layout) {
-    let min = data.iter().cloned().fold(f64::INFINITY, f64::min);
-    let max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    // Coverage histogram
+    let coverage_histogram = kuva_histogram(all_alleles.totals, NUM_BINS)
+        .with_context(|| "coverage histogram subplot")?;
+    let cov_hist_layout = Layout::auto_from_plots(&coverage_histogram)
+        // TODO: find out reference line that goes here? Check IRMA
+        // .with_reference_line(ReferenceLine::vertical(todo!()))
+        .with_title("Histogram of coverage");
 
-    let hist = Histogram::new()
-        .with_data(data)
-        .with_bins(num_bins)
-        .with_range((min, max))
-        .with_color("steelblue");
+    // Machine error confidence histogram
+    let confidence_values = all_alleles
+        .confidence_not_mac_errs
+        .into_iter()
+        .flatten()
+        // TODO: Check data filtering in IRMA scripts
+        .filter(|x| *x != 0.0)
+        .collect::<Vec<_>>();
+    let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
+        .with_context(|| "confidence histogram subplot")?;
+    let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
+        .with_reference_line(ReferenceLine::vertical(min_conf))
+        .with_title("Histogram of confidence of not machine error, non-zero");
 
-    let plots = vec![Plot::Histogram(hist)];
-    let mut layout = Layout::auto_from_plots(&plots)
-        .with_title(title)
-        .with_x_label("Value")
-        .with_y_label("Count");
+    // Multi-Plot
+    let scene = Figure::new(3, 2)
+        .with_plots(vec![
+            aq_density,
+            limited_aq_density,
+            freq_density,
+            lim_freq_dens,
+            coverage_histogram,
+            confidence_histogram,
+        ])
+        .with_layouts(vec![
+            aq_dens_layout,
+            lim_aq_dens_layout,
+            freq_dens_layout,
+            lim_freq_dens_layout,
+            cov_hist_layout,
+            confidence_hist_layout,
+        ])
+        .render();
 
-    if let Some(line) = reference_line {
-        layout = layout.with_reference_line(ReferenceLine::vertical(line))
-    }
-    (plots, layout)
-}
-
-pub fn plot_heuristics(all_allele_data: &AllAlleles, cfg: &Config) -> Result<()> {
-    Ok(())
+    let filename = format!("{target}-heuristics.svg");
+    render_multiplot(&scene, cfg.output.path.clone(), filename.as_str())
 }

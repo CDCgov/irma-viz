@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::Path};
 
 #[derive(serde::Deserialize)]
 /// TODO: Docs
@@ -15,7 +15,7 @@ pub struct PairingStats {
 
 impl PairingStats {
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut data = HashMap::new();
 
         let mut pairing_stats_reader = csv::ReaderBuilder::new()

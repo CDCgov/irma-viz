@@ -1,34 +1,144 @@
 # irma-viz
 
-A rust crate to replace R plotting dependencies in IRMA. 
+`irma-viz` is a Rust CLI for rendering IRMA report plots as SVG files.
 
-With a modular backend, editable configs, and plotting by plotters.
+It currently reads tabular IRMA outputs plus `EXPENRD.sqm` matrices and renders:
 
-## Usage
+- `READ_PERCENTAGES.svg` as a sankey diagram
+- `{target}-heuristics.svg`
+- `{target}-coverageDiagram.svg`
+- `{target}-EXPENRD.svg` when variant data has more than one row
 
-### Required arguments:
+## Status
 
-`--alleles-tsv`
-`--min-aq`
-`--min-f`
-`--min-tcc`
-`--min-conf`
+The project builds and runs, but it is still early-stage:
 
-### Config
+- the checked-in sample data is suitable for local smoke testing
 
-Plots can be toggled, and settings can be changed in `config.toml`. These defaults can also be overridden by command line arguments.
+## Build
 
-### Example
+```bash
+cargo build
+```
 
-`./irma-viz --alleles-tsv alleles.tsv --min-aq 1.1 --min-f 1.2 --min-tcc 1.3 --min-conf 1.4`
+## Run
 
-## Plots
+The binary loads a TOML config, then applies any CLI overrides on top.
 
-Currently, the plots from IRMA's `heuristics` are provided, with placeholders for the data. These feature:
+```bash
+cargo run -- --config path/to/config.toml
+```
 
-- Density of average allele quality (line plot)
-- Density to 8 (line plot)
-- Density of observed frequency to 10% (line plot)
-- Density of observed frequency to 0.008% (line plot)
-- Histogram of coverage
-- Histogram of confidence not machine error, non-zero
+To write outputs somewhere else:
+
+```bash
+cargo run -- --config path/to/config.toml --output out/
+```
+
+To render only one target:
+
+```bash
+cargo run -- --config path/to/config.toml --targets A_NS --output out/
+```
+
+To override heuristic thresholds from the command line:
+
+```bash
+cargo run -- --config path/to/config.toml --min-aq 24 --min-f 0.008 --min-tcc 100 --min-conf 0.80
+```
+
+## CLI
+
+Current help output:
+
+```text
+Usage: irma-viz [OPTIONS]
+
+Options:
+      --config <CONFIG>                      Path to config TOML [default: config.toml]
+  -t, --targets <TARGETS>                    Target organisms to plot
+      --table-path <TABLE_PATH>              Path where the input data tables are held
+      --matrix-path <MATRIX_PATH>            Path where the input matrices are held
+      --output <OUTPUT>                      Output SVG path override
+      --read-percentages <READ_PERCENTAGES>  [possible values: true, false]
+      --heuristics <HEURISTICS>              [possible values: true, false]
+      --coverage <COVERAGE>                  [possible values: true, false]
+      --clustermap <CLUSTERMAP>              [possible values: true, false]
+      --min-aq <MIN_AQ>
+      --min-f <MIN_F>
+      --min-tcc <MIN_TCC>
+      --min-conf <MIN_CONF>
+  -h, --help                                 Print help
+  -V, --version                              Print version
+```
+
+## Config
+
+The config file must match the current `Config` schema in `src/config.rs`
+
+Valid top-level sections are:
+
+- `targets`
+- `plot_toggles`
+- `input`
+- `output`
+- `constants`
+
+Example:
+
+```toml
+[targets]
+list = ["A_HA_H3", "A_MP", "A_NA_N2", "A_NP", "A_NS", "A_PA", "A_PB1", "A_PB2"]
+
+[plot_toggles]
+read_percentages = true
+clustermap = true
+heuristics = true
+coverage = true
+
+[input]
+table_path = "test_tables/"
+matrix_path = "test_matrices/"
+
+[output]
+path = "out/"
+
+[constants]
+min_aq = 24
+min_f = 0.008
+min_tcc = 100
+min_conf = 0.80
+```
+
+## Input Files
+
+The program expects these files under `table_path`:
+
+- `READ_COUNTS.txt`
+- `{target}-allAlleles.txt`
+- `{target}-coverage.txt`
+- `{target}-pairingStats.txt`
+- `{target}-variants.txt`
+
+It expects these files under `matrix_path`:
+
+- `{target}-EXPENRD.sqm`
+
+## Output Files
+
+Outputs are written as SVG files under `output.path` unless `--output` overrides it.
+
+For each enabled target, the current renderer writes:
+
+- `{target}-heuristics.svg`
+- `{target}-coverageDiagram.svg`
+- `{target}-EXPENRD.svg` when clustermap plotting is enabled and there is more than one variant row
+
+It also writes:
+
+- `READ_PERCENTAGES.svg` when `read_percentages` is enabled
+
+## Notes
+
+- CLI flags are overrides, not replacements for the config model.
+- The repository also includes `original_r_plots/` for reference outputs and `test_tables/` plus `test_matrices/` for local testing.

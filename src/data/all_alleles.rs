@@ -1,5 +1,5 @@
 use crate::data::*;
-use std::path::PathBuf;
+use std::path::Path;
 
 /// TODO: Docs
 #[derive(serde::Deserialize)]
@@ -23,7 +23,7 @@ pub struct AllAlleles {
 
 impl AllAlleles {
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut all_alleles_data = AllAlleles {
             totals: Vec::new(),
             frequencies: Vec::new(),

@@ -18,5 +18,5 @@ pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
 pub fn plot_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
     let (plot, layout) = kuva_sankey(sankey_vec);
 
-    render_plot(("READ_COUNTS.svg", (plot, layout)), cfg.output.path.clone())
+    render_plot(("READ_PERCENTAGES.svg", (plot, layout)), cfg.output.path.clone())
 }

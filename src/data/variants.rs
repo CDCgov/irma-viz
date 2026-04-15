@@ -1,12 +1,12 @@
 use crate::data::*;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(serde::Deserialize)]
 struct VariantsLine {
     #[serde(rename = "Position")]
     position: f64,
     #[serde(rename = "Consensus_Allele", deserialize_with = "option_allele_byte")]
-    conesensus_allele: Option<u8>,
+    consensus_allele: Option<u8>,
     #[serde(rename = "Minority_Allele", deserialize_with = "option_allele_byte")]
     minority_allele: Option<u8>,
     #[serde(rename = "Minority_Frequency")]
@@ -17,7 +17,7 @@ pub struct Variants {
 }
 
 impl Variants {
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut data = Vec::new();
 
         let mut variants_reader = csv::ReaderBuilder::new()
@@ -29,7 +29,7 @@ impl Variants {
 
             data.push((
                 line.position,
-                line.conesensus_allele,
+                line.consensus_allele,
                 line.minority_allele,
                 line.minority_frequency,
             ));

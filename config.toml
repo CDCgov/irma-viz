@@ -1,6 +1,6 @@
 # TODO: Docs
 [targets]
-list = ["A_PA"]
+list = ["A_HA_H3","A_MP","A_NA_N2","A_NP","A_NS","A_PA","A_PB1","A_PB2"]
 
 [plot_toggles]
 read_percentages = true
@@ -9,8 +9,8 @@ heuristics = true
 coverage = true
 
 [input]
-data_path = "test_data/"
-matrix_path = "test_data/"
+table_path = "test_tables/"
+matrix_path = "test_matrices/"
 
 [output]
 path = "out/"
@@ -21,39 +21,3 @@ min_aq = 24     # minimum average variant quality, does not apply to deletions
 min_f = 0.008   # minimum frequency for single nucleotide variants
 min_tcc = 100   # minimum non-ambiguous column coverage
 min_conf = 0.80 # minimum confidence not machine error
-
-# TODO: Make default color themes colorblind friendly/compliant
-[density_average]
-color = "#1f77b4"
-stroke_width = 2.0
-title = "Density of average allele quality"
-xlabel = "Allele quality"
-ylabel = "Density"
-filename = "allele_quality_density"
-
-[density_subplot]
-color = "#1f77b4"
-stroke_width = 2.0
-title = "Density of average allele quality to {}"
-xlabel = "Allele quality"
-ylabel = "Density" 
-
-[density_observed]
-color = "#1f77b4"
-stroke_width = 2.0
-title = "Density of average allele quality to {}"
-xlabel = "Observed frequency"
-ylabel = "Density" 
-
-[observed_subplot]
-color = "#1f77b4"
-stroke_width = 2.0
-title = "Density of average allele quality to _"
-xlabel = "Observed frequency"
-ylabel = "Density" 
-
-[coverage_histogram]
-bins = 50   # from IRMA `heuristicDiagram.R`
-
-[confidence_histogram]
-bins = 50

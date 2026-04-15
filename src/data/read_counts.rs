@@ -1,6 +1,5 @@
 use crate::data::*;
-use core::option::Option;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Debug, serde::Deserialize)]
 /// TODO: Docs
@@ -21,7 +20,7 @@ pub struct ReadCounts {
 impl ReadCounts {
     #[allow(unused)]
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut record_data_map = HashMap::new();
 
         let mut read_counts_reader = csv::ReaderBuilder::new()
@@ -42,7 +41,7 @@ pub struct SankeyVec {
 }
 
 impl SankeyVec {
-    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut edges = Vec::new();
 
         let mut read_counts_reader = csv::ReaderBuilder::new()

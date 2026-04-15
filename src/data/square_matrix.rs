@@ -1,8 +1,8 @@
-use anyhow::{Context, anyhow};
+use anyhow::{Context, Result, anyhow};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    path::PathBuf,
+    path::Path,
 };
 
 #[derive(Debug, Clone)]
@@ -14,12 +14,13 @@ pub struct SquareMatrix {
 
 impl SquareMatrix {
     /// TODO: Docs
-    pub fn import_from_file(filename: &PathBuf) -> anyhow::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> Result<Self> {
         let mut labels = Vec::new();
         let mut matrix = Vec::new();
 
         let sqm_reader = BufReader::new(File::open(filename)?).lines();
-        let mut row_num = 0;
+
+        let mut expected_len = None;
         for (line_num, line) in sqm_reader.enumerate() {
             let line = line?;
             if line.is_empty() {
@@ -29,14 +30,14 @@ impl SquareMatrix {
             let (label, row) = Self::parse_line(&line)
                 .with_context(|| format!("Failed to parse line number {ln}", ln = line_num + 1))?;
 
+            match expected_len {
+                None => expected_len = Some(row.len()),
+                Some(len) if row.len() != len => return Err(anyhow!("Matrix is not square.")),
+                _ => (),
+            }
+
             labels.push(label);
             matrix.push(row);
-
-            let prev_row = line_num.saturating_sub(1);
-            if matrix[prev_row].len() != matrix[row_num].len() {
-                return Err(anyhow!("Matrix is not square."));
-            }
-            row_num += 1;
         }
 
         if matrix.is_empty() {
@@ -51,7 +52,7 @@ impl SquareMatrix {
     }
 
     /// TODO: Docs
-    fn parse_line(line: &str) -> anyhow::Result<(String, Vec<f64>)> {
+    fn parse_line(line: &str) -> Result<(String, Vec<f64>)> {
         let mut split_line = line.split('\t');
 
         // No panic: line is checked for empty before passed to this func
@@ -66,4 +67,4 @@ impl SquareMatrix {
 
         Ok((label.to_string(), row))
     }
- }
+}
