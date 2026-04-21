@@ -1,10 +1,10 @@
 use crate::data::*;
-use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(serde::Deserialize)]
 struct VariantsLine {
     #[serde(rename = "Position")]
-    position: f64,
+    position: usize,
     #[serde(rename = "Consensus_Allele", deserialize_with = "option_allele_byte")]
     consensus_allele: Option<u8>,
     #[serde(rename = "Minority_Allele", deserialize_with = "option_allele_byte")]
@@ -12,12 +12,21 @@ struct VariantsLine {
     #[serde(rename = "Minority_Frequency")]
     minority_frequency: f64,
 }
+
+#[derive(Clone, Copy, Debug)]
+pub struct Variant {
+    pub position: usize,
+    pub consensus_allele: char,
+    pub minority_allele: char,
+    pub minority_frequency: f64,
+}
+#[derive(Debug, Clone)]
 pub struct Variants {
-    pub data: Vec<(f64, Option<u8>, Option<u8>, f64)>,
+    pub data: Vec<Variant>,
 }
 
 impl Variants {
-    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
         let mut data = Vec::new();
 
         let mut variants_reader = csv::ReaderBuilder::new()
@@ -25,14 +34,22 @@ impl Variants {
             .from_path(filename)?;
 
         for line in variants_reader.deserialize() {
-            let line: VariantsLine = line?;
+            let VariantsLine {
+                position,
+                consensus_allele,
+                minority_allele,
+                minority_frequency,
+            } = line?;
 
-            data.push((
-                line.position,
-                line.consensus_allele,
-                line.minority_allele,
-                line.minority_frequency,
-            ));
+            let consensus_allele = consensus_allele.unwrap_or(b'N') as char;
+            let minority_allele = minority_allele.unwrap_or(b'N') as char;
+
+            data.push(Variant {
+                position,
+                consensus_allele,
+                minority_allele,
+                minority_frequency,
+            });
         }
 
         Ok(Variants { data })

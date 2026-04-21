@@ -5,7 +5,7 @@ use crate::{
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{
         clustermap::plot_clustermap, coverage::plot_coverage, heuristics::plot_heuristics,
-        sankey::plot_sankey,
+        read_percentages::plot_sankey,
     },
 };
 use anyhow::{Context, Result};

@@ -3,8 +3,6 @@ use clap::Parser;
 use serde::Deserialize;
 use std::{fs, path::PathBuf};
 
-// (I think) we will want to have separate configuration options for each plot
-
 /// These are for overriding settings from the config.toml
 #[derive(Debug, Parser)]
 #[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
@@ -40,6 +38,9 @@ pub struct Config {
     pub output: OutputConfig,
     pub plot_toggles: PlotToggles,
     pub constants: HeuristicsConfig,
+
+    #[serde(flatten)]
+    pub plot_specific: PlotSpecificConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,6 +102,40 @@ pub struct HeuristicsConfig {
     pub min_f: f64,
     pub min_tcc: f64,
     pub min_conf: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlotSpecificConfig {
+    #[serde(rename = "coverage_options")]
+    pub coverage: CoverageConfig,
+
+    #[serde(rename = "percent_options")]
+    pub read_percent: ReadPercentConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CoverageColorOption {
+    Nucleotide,
+    Frequency,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PercentVizOption {
+    Sankey,
+    Pie,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoverageConfig {
+    #[serde(rename = "variant_color")]
+    pub color_option: CoverageColorOption,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReadPercentConfig {
+    pub viz_option: PercentVizOption,
 }
 
 fn merge<T>(target: &mut T, override_val: Option<T>) {

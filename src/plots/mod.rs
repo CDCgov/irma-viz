@@ -9,7 +9,7 @@ use std::path::Path;
 pub mod clustermap;
 pub mod coverage;
 pub mod heuristics;
-pub mod sankey;
+pub mod read_percentages;
 
 pub fn render_plot(plot: (&str, (Vec<Plot>, Layout)), outpath: impl AsRef<Path>) -> Result<()> {
     let (filename, (plots, layout)) = plot;
