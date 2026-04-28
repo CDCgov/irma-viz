@@ -5,7 +5,7 @@ use crate::{
     data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
     plots::{
         clustermap::plot_clustermap, coverage::plot_coverage, heuristics::plot_heuristics,
-        read_percentages::plot_sankey,
+        read_percentages::plot_read_percentages,
     },
 };
 use anyhow::{Context, Result};
@@ -41,7 +41,8 @@ fn main() -> Result<()> {
             )
         })?;
 
-        plot_sankey(sankey_vec, &cfg).with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+        plot_read_percentages(sankey_vec, &cfg)
+            .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
     }
 
     for target in &cfg.targets.list {

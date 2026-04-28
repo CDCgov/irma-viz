@@ -26,4 +26,4 @@ min_conf = 0.80 # minimum confidence not machine error
 variant_color = "nucleotide" # either "nucleotide" for original configuration, or "frequency" for possible change
 
 [percent_options]
-viz_option = "sankey" # either "sankey" or "pie"
+viz_option = "pie" # either "sankey" or "pie"

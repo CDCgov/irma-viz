@@ -121,7 +121,6 @@ pub fn plot_coverage(
 
     let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
 
-    // TODO: Add bar chart to multiplot here
     let scene = Figure::new(2, 1)
         .with_plots(vec![coverage_plot, coverage_bar])
         .with_layouts(vec![coverage_layout, bar_layout])
