@@ -119,7 +119,7 @@ pub fn plot_coverage(
         );
     }
 
-    let coverage_bar = coverage_bar(&variants, pairing_stats);
+    let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
 
     // TODO: Add bar chart to multiplot here
     let scene = Figure::new(2, 1)
@@ -134,8 +134,12 @@ pub fn plot_coverage(
 /// Creates a bar of the minor variants, using labels such as A2C, for a
 /// concensus A with a variant C. The bars are colored based on the nucleotide
 /// of the variant, with heights based on the observed frequency of that variant.
-pub fn coverage_bar(variants: &Variants, pairing_stats: PairingStats) -> BarPlot {
+pub fn coverage_bar(variants: &Variants, pairing_stats: PairingStats) -> (Vec<Plot>, Layout) {
     let mut bar = BarPlot::new();
+    let expected = pairing_stats
+        .data
+        .get("ExpectedErrorRate")
+        .expect("Could not read expected error rate from pairing stats");
 
     for variant in &variants.data {
         let label = format!(
@@ -150,5 +154,10 @@ pub fn coverage_bar(variants: &Variants, pairing_stats: PairingStats) -> BarPlot
         );
     }
 
-    bar
+    bar = bar.with_colored_bar("Expected Error", *expected, "black");
+    let bar = vec![bar.into()];
+
+    let bar_layout = Layout::auto_from_plots(&bar)
+        .with_reference_line(ReferenceLine::horizontal(*expected).with_color("black"));
+    (bar, bar_layout)
 }
