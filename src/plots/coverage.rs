@@ -1,7 +1,7 @@
 use crate::{
-    config::Config,
+    config::{Config, CoverageColorOption},
     data::{Coverage, PairingStats, Variant, Variants},
-    plots::render_multiplot,
+    plots::{render_multiplot, render_plot},
 };
 use anyhow::Result;
 use kuva::prelude::*;
@@ -119,15 +119,27 @@ pub fn plot_coverage(
         );
     }
 
-    let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
-
-    let scene = Figure::new(2, 1)
-        .with_plots(vec![coverage_plot, coverage_bar])
-        .with_layouts(vec![coverage_layout, bar_layout])
-        .render();
-
     let filename = format!("{target}-coverageDiagram.svg");
-    render_multiplot(&scene, cfg.output.path.clone(), filename.as_str())
+
+    // skip bar making and multiplot if using frequency for coloring, or if no
+    // variants
+    if cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
+        && !variants.data.is_empty()
+    {
+        let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
+
+        let scene = Figure::new(2, 1)
+            .with_plots(vec![coverage_plot, coverage_bar])
+            .with_layouts(vec![coverage_layout, bar_layout])
+            .render();
+
+        render_multiplot(&scene, cfg.output.path.clone(), &filename)
+    } else {
+        render_plot(
+            (&filename, (coverage_plot, coverage_layout)),
+            cfg.output.path.clone(),
+        )
+    }
 }
 
 /// Creates a bar of the minor variants, using labels such as A2C, for a

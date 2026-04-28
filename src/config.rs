@@ -113,7 +113,7 @@ pub struct PlotSpecificConfig {
     pub read_percent: ReadPercentConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CoverageColorOption {
     Nucleotide,
