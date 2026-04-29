@@ -1,6 +1,6 @@
 use crate::{
     config::{Config, CoverageColorOption},
-    data::{Coverage, PairingStats, Variant, Variants},
+    data::{Coverage, PairingStats, Variant, AllVariants},
     plots::{render_multiplot, render_plot},
 };
 use anyhow::Result;
@@ -41,7 +41,7 @@ fn min_coverage(coverage: &Coverage) -> f64 {
         .expect("Data is checked for empty and Nones at import.")
 }
 
-fn freq_range(variants: &Variants) -> Option<(f64, f64)> {
+fn freq_range(variants: &AllVariants) -> Option<(f64, f64)> {
     variants
         .data
         .iter()
@@ -76,7 +76,7 @@ pub fn kuva_coverage(coverage: Coverage) -> Vec<Plot> {
 
 pub fn plot_coverage(
     coverage: Coverage,
-    variants: Variants,
+    variants: AllVariants,
     pairing_stats: PairingStats,
     cfg: &Config,
     target: &str,
@@ -145,7 +145,7 @@ pub fn plot_coverage(
 /// Creates a bar of the minor variants, using labels such as A2C, for a
 /// concensus A with a variant C. The bars are colored based on the nucleotide
 /// of the variant, with heights based on the observed frequency of that variant.
-pub fn coverage_bar(variants: &Variants, pairing_stats: PairingStats) -> (Vec<Plot>, Layout) {
+pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec<Plot>, Layout) {
     let mut bar = BarPlot::new();
     let expected = pairing_stats
         .data

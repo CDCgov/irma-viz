@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Args, apply_cli_overrides, load_config},
-    data::{AllAlleles, Coverage, PairingStats, SankeyVec, SquareMatrix, Variants},
+    data::{AllAlleles, AllVariants, Coverage, PairingStats, SankeyVec, SquareMatrix},
     plots::{
         clustermap::plot_clustermap, coverage::plot_coverage, heuristics::plot_heuristics,
         read_percentages::plot_read_percentages,
@@ -66,7 +66,7 @@ fn main() -> Result<()> {
 
         if cfg.plot_toggles.clustermap || cfg.plot_toggles.coverage {
             let variants_path = cfg.input.table_path.join(format!("{target}-variants.txt"));
-            let variants = Variants::import_from_file(&variants_path).with_context(|| {
+            let variants = AllVariants::import_from_file(&variants_path).with_context(|| {
                 format!(
                     "Failed to import Variants data from \'{}\'",
                     &variants_path.display()

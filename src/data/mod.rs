@@ -28,17 +28,27 @@ where
 }
 
 /// TODO: Docs
-fn option_allele_byte<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+fn allele_char<'de, D>(deserializer: D) -> Result<char, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let s: &str = Deserialize::deserialize(deserializer)?;
-
-    match s {
-        "-" => Ok(None),
-        "A" | "C" | "G" | "T" | "N" => Ok(Some(s.as_bytes()[0])),
-        _ => Err(D::Error::custom(
-            "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", \"N\", or \"-\".",
-        )),
+    if let &[s] = s
+        .to_ascii_uppercase()
+        .chars()
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
+        match s {
+            'A' | 'C' | 'G' | 'T' => Ok(s),
+            'N' | '-' | '.' => Ok('N'),
+            _ => Err(D::Error::custom(
+                "Failed to parse Allele field. Allele is not \"A\", \"C\", \"G\", \"T\", \"N\", or \"-\".",
+            )),
+        }
+    } else {
+        Err(D::Error::custom(
+            "Faield to parse Allele field. Allele is not a single character.",
+        ))
     }
 }

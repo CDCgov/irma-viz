@@ -11,7 +11,6 @@ struct ReadCountsLine {
 }
 
 #[derive(Debug)]
-#[allow(unused)]
 /// TODO: Docs
 pub struct ReadCounts {
     pub record_data_map: HashMap<String, Option<f64>>,
