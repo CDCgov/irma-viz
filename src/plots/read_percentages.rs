@@ -5,9 +5,8 @@ use crate::{
 };
 use anyhow::Result;
 use kuva::{
-    plot::{PiePlot, SankeyPlot},
+    plot::{PiePlot, SankeyPlot, TextPlot},
     prelude::{Figure, Layout, Plot},
-    render::annotations::TextAnnotation,
 };
 use std::collections::HashMap;
 
@@ -161,18 +160,11 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
         }
     });
 
-    // Placeholder for paragraph text
-    // this is ugly as sin but should have something more functional in the kuva 0.1.17 release
-    let text_box = PiePlot::new()
-        .with_slice("test", 100.0, "purple")
-        .with_legend("hey");
+    let text_box = TextPlot::new()
+        .with_body(if paired { PAIRED_README } else { SINGLE_README })
+        .with_padding(0.0);
     let text_box = vec![text_box.into()];
-
-    let text_box_layout = Layout::auto_from_plots(&text_box).with_annotation(
-        TextAnnotation::new(if paired { PAIRED_README } else { SINGLE_README }, 0.0, 0.0)
-            .with_font_size(12),
-    );
-
+    let text_box_layout = Layout::auto_from_plots(&text_box);
     let filename = "READ_PERCENTAGES.svg";
 
     let scene = Figure::new(2, 2)
@@ -188,38 +180,38 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
     render_multiplot(&scene, cfg.output.path.clone(), filename)
 }
 
-const SINGLE_README: &str = "READ PROPORTIONS.
-
-1. Percentages of total read counts
-    - ASSEMBLED: influenza reads in final assemblies.
-    - QC FILTERED: didn't pass length/median quality thresholds.
-    - OTHER: non-flu and contaminant/poor flu signal.
-
-2. Percentages of all read patterns passing QC process
-   - Patterns are clustered or non-redundant reads.
-   - ASSEMBLED: excellent influenza read patterns.
-   - UNUSABLE: poor or contaminant flu patterns.
-   - CHIMERIC: flu patterns matching both strands.
-   - NO MATCH: non-flu read patterns.
-
-3. Percentages of assembled read counts
+const SINGLE_README: &str = "# READ PROPORTIONS.\n\
+\n\
+## 1. Percentages of total read counts\n\
+    - ASSEMBLED: influenza reads in final assemblies.\n\
+    - QC FILTERED: didn't pass length/median quality thresholds.\n\
+    - OTHER: non-flu and contaminant/poor flu signal.\n\
+\n\
+## 2. Percentages of all read patterns passing QC process\n\
+   - Patterns are clustered or non-redundant reads.\n\
+   - ASSEMBLED: excellent influenza read patterns.\n\
+   - UNUSABLE: poor or contaminant flu patterns.\n\
+   - CHIMERIC: flu patterns matching both strands.\n\
+   - NO MATCH: non-flu read patterns.\n\
+\n\
+## 3. Percentages of assembled read counts\n\
    - Shows the proportion of gene segments to the genome.";
 
-const PAIRED_README: &str = "READ PROPORTIONS.
-
-1. Percentages of total read counts (R1 & R2)
-    - ASSEMBLED: influenza reads in final assemblies.
-    - QC FILTERED: didn't pass length/median quality thresholds.
-    - OTHER: non-flu and contaminant/poor flu signal.
-
-2. Percentages of all read patterns passing QC process
-   - Patterns are clustered or non-redundant reads.
-   - ASSEMBLED: excellent influenza read patterns.
-   - UNUSABLE: poor or contaminant flu patterns.
-   - CHIMERIC: flu patterns matching both strands.
-   - NO MATCH: non-flu read patterns.
-
-3. Percentages of assembled, merged-pair read counts
-   - Shows the proportion of gene segments to the genome.
-   - Paired-end reads have been merged into a single count
+const PAIRED_README: &str = "# READ PROPORTIONS.\n\
+\n\
+## 1. Percentages of total read counts (R1 & R2)\n\
+    - **ASSEMBLED**: influenza reads in final assemblies.\n\
+    - **QC FILTERED**: didn't pass length/median quality thresholds.\n\
+    - **OTHER**: non-flu and contaminant/poor flu signal.\n\
+\n\
+## 2. Percentages of all read patterns passing QC process\n\
+   - Patterns are clustered or non-redundant reads.\n\
+   - **ASSEMBLED**: excellent influenza read patterns.\n\
+   - **UNUSABLE**: poor or contaminant flu patterns.\n\
+   - **CHIMERIC**: flu patterns matching both strands.\n\
+   - **NO MATCH**: non-flu read patterns.\n\
+\n\
+## 3. Percentages of assembled, merged-pair read counts\n\
+   - Shows the proportion of gene segments to the genome.\n\
+   - Paired-end reads have been merged into a single count\n\
      unless not applicable: single-end reads have been used.";
