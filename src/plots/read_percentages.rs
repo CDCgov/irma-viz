@@ -5,8 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use kuva::{
-    plot::{PiePlot, SankeyPlot, TextPlot},
-    prelude::{Figure, Layout, Plot},
+    Palette, plot::{PiePlot, SankeyPlot, TextPlot}, prelude::{Figure, Layout, Plot}
 };
 
 pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
@@ -48,14 +47,15 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 fn kuva_pies(read_counts: ReadCounts, targets: &[String]) -> (Vec<Vec<Plot>>, Vec<Layout>) {
     let paired = true;
 
+    let pal = Palette::wong();
+
     let map = read_counts.record_data_map;
     let pass_qc = *map.get("2-passQC").unwrap_or(&0.0);
     let fail_qc = *map.get("2-failQC").unwrap_or(&0.0);
 
-    // TO-DO - replace placeholder colors
     let total_pie = PiePlot::new()
-        .with_slice("Pass QC", pass_qc, "seagreen")
-        .with_slice("Fail QC", fail_qc, "tomato")
+        .with_slice("Pass QC", pass_qc, &pal[0])
+        .with_slice("Fail QC", fail_qc, &pal[1])
         .with_legend("QC result")
         .with_percent()
         .with_label_position(kuva::plot::PieLabelPosition::Outside);
@@ -73,12 +73,11 @@ fn kuva_pies(read_counts: ReadCounts, targets: &[String]) -> (Vec<Vec<Plot>>, Ve
     let no_match = *map.get("3-nomatch").unwrap_or(&0.0);
     let chimeric = *map.get("3-chimeric").unwrap_or(&0.0);
 
-    // TO-DO - replace placeholder colors
     let passed_qc_pie = PiePlot::new()
-        .with_slice("Primary Match", primary, "steelblue")
-        .with_slice("Alt Match", alt, "orange")
-        .with_slice("No Match", no_match, "gray")
-        .with_slice("Chimeric", chimeric, "purple")
+        .with_slice("Primary Match", primary, &pal[0])
+        .with_slice("Alt Match", alt, &pal[1])
+        .with_slice("No Match", no_match, &pal[2])
+        .with_slice("Chimeric", chimeric, &pal[3])
         .with_percent()
         .with_label_position(kuva::plot::PieLabelPosition::Outside)
         .with_legend("Match Type");
@@ -100,20 +99,8 @@ fn kuva_pies(read_counts: ReadCounts, targets: &[String]) -> (Vec<Vec<Plot>>, Ve
         .with_label_position(kuva::plot::PieLabelPosition::Outside);
     //.with_legend("Primary Classification")
 
-    for (label, value) in primary_matches {
-        // TO-DO - replace placeholder colors
-        let color = match label {
-            "A_MP" => "steelblue",
-            "A_NP" => "seagreen",
-            "A_PB2" => "orange",
-            "A_HA_H3" => "tomato",
-            "A_PA" => "purple",
-            "A_PB1" => "gold",
-            "A_NS" => "brown",
-            "A_NA_N2" => "gray",
-            _ => "lightgray",
-        };
-
+    for (index, (label, value)) in primary_matches.into_iter().enumerate() {
+        let color = &pal[index];
         match_pie = match_pie.with_slice(label, value, color);
     }
     let match_pie = vec![match_pie.into()];
