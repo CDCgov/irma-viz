@@ -1,6 +1,6 @@
 use crate::{
-    config::{Config, PercentVizOption},
-    data::SankeyVec,
+    config::Config,
+    data::{ReadCounts, SankeyVec},
     plots::{render_multiplot, render_plot},
 };
 use anyhow::Result;
@@ -8,19 +8,14 @@ use kuva::{
     plot::{PiePlot, SankeyPlot, TextPlot},
     prelude::{Figure, Layout, Plot},
 };
-use std::collections::HashMap;
 
-pub fn plot_read_percentages(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
-    if cfg.plot_specific.read_percent.viz_option == PercentVizOption::Sankey {
-        let (plot, layout) = kuva_sankey(sankey_vec);
+pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
+    let (plot, layout) = kuva_sankey(sankey_vec);
 
-        render_plot(
-            ("READ_PERCENTAGES.svg", (plot, layout)),
-            cfg.output.path.clone(),
-        )
-    } else {
-        total_reads_pies(sankey_vec, cfg)
-    }
+    render_plot(
+        ("READ_PERCENTAGES.svg", (plot, layout)),
+        cfg.output.path.clone(),
+    )
 }
 
 pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
@@ -33,32 +28,34 @@ pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
-fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
+pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
+    // TODO: Auto pick colors
+    // TODO: pie chart values do not need to be based on magnitude, api is proportional
+
+    let targets = &cfg.targets.list;
+    let (plots, layouts) = kuva_pies(read_counts, targets);
+
+    let filename = "READ_PERCENTAGES.svg";
+
+    let scene = Figure::new(2, 2)
+        .with_plots(plots)
+        .with_layouts(layouts)
+        .render();
+
+    render_multiplot(&scene, cfg.output.path.clone(), filename)
+}
+
+fn kuva_pies(read_counts: ReadCounts, targets: &[String]) -> (Vec<Vec<Plot>>, Vec<Layout>) {
     let paired = true;
 
-    let mut map = HashMap::new();
-    for (from, to, value) in &sankey_vec.edges {
-        map.insert((from.as_str(), to.as_str()), *value);
-    }
+    let map = read_counts.record_data_map;
+    let pass_qc = *map.get("2-passQC").unwrap_or(&0.0);
+    let fail_qc = *map.get("2-failQC").unwrap_or(&0.0);
 
-    let pass_qc = *map.get(&("Initial Reads", "Pass QC")).unwrap_or(&0.0);
-    let fail_qc = *map.get(&("Initial Reads", "Fail QC")).unwrap_or(&0.0);
-    let total = pass_qc + fail_qc;
-
-    let pass_pct = if total > 0.0 {
-        100.0 * pass_qc / total
-    } else {
-        0.0
-    };
-    let fail_pct = if total > 0.0 {
-        100.0 * fail_qc / total
-    } else {
-        0.0
-    };
     // TO-DO - replace placeholder colors
     let total_pie = PiePlot::new()
-        .with_slice("Pass QC", pass_pct, "seagreen")
-        .with_slice("Fail QC", fail_pct, "tomato")
+        .with_slice("Pass QC", pass_qc, "seagreen")
+        .with_slice("Fail QC", fail_qc, "tomato")
         .with_legend("QC result")
         .with_percent()
         .with_label_position(kuva::plot::PieLabelPosition::Outside);
@@ -71,39 +68,17 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
         }
     });
 
-    let primary = *map.get(&("Pass QC", "Primary Match")).unwrap_or(&0.0);
-    let alt = *map.get(&("Pass QC", "Alt Match")).unwrap_or(&0.0);
-    let no_match = *map.get(&("Pass QC", "No Match")).unwrap_or(&0.0);
-    let chimeric = *map.get(&("Pass QC", "Chimeric")).unwrap_or(&0.0);
+    let primary = *map.get("3-match").unwrap_or(&0.0);
+    let alt = *map.get("3-altmatch").unwrap_or(&0.0);
+    let no_match = *map.get("3-nomatch").unwrap_or(&0.0);
+    let chimeric = *map.get("3-chimeric").unwrap_or(&0.0);
 
-    let total = primary + alt + no_match + chimeric;
-
-    let primary_pct = if total > 0.0 {
-        100.0 * primary / total
-    } else {
-        0.0
-    };
-    let alt_pct = if total > 0.0 {
-        100.0 * alt / total
-    } else {
-        0.0
-    };
-    let no_match_pct = if total > 0.0 {
-        100.0 * no_match / total
-    } else {
-        0.0
-    };
-    let chimeric_pct = if total > 0.0 {
-        100.0 * chimeric / total
-    } else {
-        0.0
-    };
     // TO-DO - replace placeholder colors
     let passed_qc_pie = PiePlot::new()
-        .with_slice("Primary Match", primary_pct, "steelblue")
-        .with_slice("Alt Match", alt_pct, "orange")
-        .with_slice("No Match", no_match_pct, "gray")
-        .with_slice("Chimeric", chimeric_pct, "purple")
+        .with_slice("Primary Match", primary, "steelblue")
+        .with_slice("Alt Match", alt, "orange")
+        .with_slice("No Match", no_match, "gray")
+        .with_slice("Chimeric", chimeric, "purple")
         .with_percent()
         .with_label_position(kuva::plot::PieLabelPosition::Outside)
         .with_legend("Match Type");
@@ -111,31 +86,21 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
     let passed_qc_layout = Layout::auto_from_plots(&passed_qc_pie)
         .with_title("2. Percentages of all read patterns passing QC");
 
-    let primary_matches: Vec<(&str, f64)> = sankey_vec
-        .edges
+    let primary_matches = targets
         .iter()
-        .filter_map(|(from, to, value)| {
-            if from == "Primary Match" {
-                Some((to.as_str(), *value))
-            } else {
-                None
-            }
+        .map(|target| {
+            let mut prefix_target = String::from("4-");
+            prefix_target.push_str(target);
+            (target.as_str(), *map.get(&prefix_target).unwrap_or(&0.0))
         })
-        .collect();
+        .collect::<Vec<_>>();
 
-    let total: f64 = primary_matches.iter().map(|(_, v)| *v).sum();
     let mut match_pie = PiePlot::new()
         .with_percent()
         .with_label_position(kuva::plot::PieLabelPosition::Outside);
     //.with_legend("Primary Classification")
 
     for (label, value) in primary_matches {
-        let pct = if total > 0.0 {
-            100.0 * value / total
-        } else {
-            0.0
-        };
-
         // TO-DO - replace placeholder colors
         let color = match label {
             "A_MP" => "steelblue",
@@ -149,7 +114,7 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
             _ => "lightgray",
         };
 
-        match_pie = match_pie.with_slice(label, pct, color);
+        match_pie = match_pie.with_slice(label, value, color);
     }
     let match_pie = vec![match_pie.into()];
     let match_layout = Layout::auto_from_plots(&match_pie).with_title({
@@ -165,19 +130,16 @@ fn total_reads_pies(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
         .with_padding(0.0);
     let text_box = vec![text_box.into()];
     let text_box_layout = Layout::auto_from_plots(&text_box);
-    let filename = "READ_PERCENTAGES.svg";
 
-    let scene = Figure::new(2, 2)
-        .with_plots(vec![total_pie, passed_qc_pie, match_pie, text_box])
-        .with_layouts(vec![
+    (
+        vec![total_pie, passed_qc_pie, match_pie, text_box],
+        vec![
             total_layout,
             passed_qc_layout,
             match_layout,
             text_box_layout,
-        ])
-        .render();
-
-    render_multiplot(&scene, cfg.output.path.clone(), filename)
+        ],
+    )
 }
 
 const SINGLE_README: &str = "# READ PROPORTIONS.\n\

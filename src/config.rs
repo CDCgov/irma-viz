@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use serde::Deserialize;
 use std::{fs, path::PathBuf};
 
@@ -27,7 +27,10 @@ pub struct Args {
     pub enabled_plots: PlotToggleArgs,
     /// Constants for heuristic plot
     #[command(flatten)]
-    pub heuristics_args: HeuristicsArgs,
+    pub heuristics_args: ConstantsArgs,
+    /// Plot specific args
+    #[command(flatten)]
+    pub plot_specific_args: PlotSpecificArgs,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,7 +57,6 @@ pub struct InputConfig {
     pub matrix_path: PathBuf,
 }
 
-// to-do: add subplot configs
 #[derive(Debug, Deserialize)]
 pub struct OutputConfig {
     pub path: PathBuf,
@@ -85,7 +87,7 @@ pub struct PlotToggleArgs {
 }
 
 #[derive(Debug, Parser, Deserialize)]
-pub struct HeuristicsArgs {
+pub struct ConstantsArgs {
     #[arg(long)]
     pub min_aq: Option<f64>,
     #[arg(long)]
@@ -113,14 +115,23 @@ pub struct PlotSpecificConfig {
     pub read_percent: ReadPercentConfig,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Parser)]
+pub struct PlotSpecificArgs {
+    #[arg(long, value_enum)]
+    pub coverage_variant_color: Option<CoverageColorOption>,
+
+    #[arg(long, value_enum)]
+    pub read_percentages_viz: Option<PercentVizOption>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum CoverageColorOption {
     Nucleotide,
     Frequency,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum PercentVizOption {
     Sankey,
@@ -183,6 +194,16 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     merge(&mut cfg.constants.min_f, args.heuristics_args.min_f);
     merge(&mut cfg.constants.min_conf, args.heuristics_args.min_conf);
     merge(&mut cfg.constants.min_tcc, args.heuristics_args.min_tcc);
+
+    // plot-specific
+    merge(
+        &mut cfg.plot_specific.coverage.color_option,
+        args.plot_specific_args.coverage_variant_color,
+    );
+    merge(
+        &mut cfg.plot_specific.read_percent.viz_option,
+        args.plot_specific_args.read_percentages_viz,
+    );
 
     cfg
 }

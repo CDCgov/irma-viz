@@ -1,6 +1,6 @@
 use crate::{
     config::{Config, CoverageColorOption},
-    data::{Coverage, PairingStats, Variant, AllVariants},
+    data::{AllVariants, Coverage, PairingStats, Variant},
     plots::{render_multiplot, render_plot},
 };
 use anyhow::Result;
@@ -147,10 +147,7 @@ pub fn plot_coverage(
 /// of the variant, with heights based on the observed frequency of that variant.
 pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec<Plot>, Layout) {
     let mut bar = BarPlot::new();
-    let expected = pairing_stats
-        .data
-        .get("ExpectedErrorRate")
-        .expect("Could not read expected error rate from pairing stats");
+    let expected = pairing_stats.data.get("ExpectedErrorRate");
 
     for variant in &variants.data {
         let label = format!(
@@ -165,10 +162,19 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
         );
     }
 
-    bar = bar.with_colored_bar("Expected Error", *expected, "black");
+    if let Some(value) = expected {
+        bar = bar.with_colored_bar("Expected Error", *value, "black");
+    }
+
     let bar = vec![bar.into()];
 
-    let bar_layout = Layout::auto_from_plots(&bar)
-        .with_reference_line(ReferenceLine::horizontal(*expected).with_color("black"));
-    (bar, bar_layout)
+    let bar_layout = Layout::auto_from_plots(&bar);
+
+    if let Some(value) = expected {
+        let bar_layout =
+            bar_layout.with_reference_line(ReferenceLine::horizontal(*value).with_color("black"));
+        (bar, bar_layout)
+    } else {
+        (bar, bar_layout)
+    }
 }

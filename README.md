@@ -4,7 +4,7 @@
 
 It currently reads tabular IRMA outputs plus `EXPENRD.sqm` matrices and renders:
 
-- `READ_PERCENTAGES.svg` as a sankey diagram
+- `READ_PERCENTAGES.svg` as either a sankey diagram or a pie-panel figure
 - `{target}-heuristics.svg`
 - `{target}-coverageDiagram.svg`
 - `{target}-EXPENRD.svg` when variant data has more than one row
@@ -47,6 +47,12 @@ To override heuristic thresholds from the command line:
 cargo run -- --config path/to/config.toml --min-aq 24 --min-f 0.008 --min-tcc 100 --min-conf 0.80
 ```
 
+To override plot-specific options from the command line:
+
+```bash
+cargo run -- --config path/to/config.toml --coverage-variant-color frequency --read-percentages-viz pie
+```
+
 ## CLI
 
 Current help output:
@@ -68,6 +74,8 @@ Options:
       --min-f <MIN_F>
       --min-tcc <MIN_TCC>
       --min-conf <MIN_CONF>
+      --coverage-variant-color <COVERAGE_VARIANT_COLOR>  [possible values: nucleotide, frequency]
+      --read-percentages-viz <READ_PERCENTAGES_VIZ>      [possible values: sankey, pie]
   -h, --help                                 Print help
   -V, --version                              Print version
 ```
@@ -83,6 +91,8 @@ Valid top-level sections are:
 - `input`
 - `output`
 - `constants`
+- `coverage_options`
+- `percent_options`
 
 Example:
 
@@ -108,6 +118,12 @@ min_aq = 24
 min_f = 0.008
 min_tcc = 100
 min_conf = 0.80
+
+[coverage_options]
+variant_color = "nucleotide"
+
+[percent_options]
+viz_option = "pie"
 ```
 
 ## Input Files
@@ -137,6 +153,8 @@ For each enabled target, the current renderer writes:
 It also writes:
 
 - `READ_PERCENTAGES.svg` when `read_percentages` is enabled
+  - rendered as a sankey when `percent_options.viz_option = "sankey"` or `--read-percentages-viz sankey`
+  - rendered as a pie-panel figure when `percent_options.viz_option = "pie"` or `--read-percentages-viz pie`
 
 ## Notes
 

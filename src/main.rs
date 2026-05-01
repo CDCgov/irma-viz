@@ -1,11 +1,13 @@
 //! TODO: Docs
 
 use crate::{
-    config::{Args, apply_cli_overrides, load_config},
-    data::{AllAlleles, AllVariants, Coverage, PairingStats, SankeyVec, SquareMatrix},
+    config::{Args, PercentVizOption, apply_cli_overrides, load_config},
+    data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     plots::{
-        clustermap::plot_clustermap, coverage::plot_coverage, heuristics::plot_heuristics,
-        read_percentages::plot_read_percentages,
+        clustermap::plot_clustermap,
+        coverage::plot_coverage,
+        heuristics::plot_heuristics,
+        read_percentages::{plot_perc_pies, plot_perc_sankey},
     },
 };
 use anyhow::{Context, Result};
@@ -34,15 +36,33 @@ fn main() -> Result<()> {
     // Read Counts
     if cfg.plot_toggles.read_percentages {
         let read_counts_path = cfg.input.table_path.join("READ_COUNTS.txt");
-        let sankey_vec = SankeyVec::import_from_file(&read_counts_path).with_context(|| {
-            format!(
-                "Failed to import Read Counts data from: \'{}\'",
-                &read_counts_path.display()
-            )
-        })?;
 
-        plot_read_percentages(sankey_vec, &cfg)
-            .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+        match cfg.plot_specific.read_percent.viz_option {
+            PercentVizOption::Sankey => {
+                let sankey_vec =
+                    SankeyVec::import_from_file(&read_counts_path).with_context(|| {
+                        format!(
+                            "Failed to import Read Counts data from: \'{}\'",
+                            &read_counts_path.display()
+                        )
+                    })?;
+
+                plot_perc_sankey(sankey_vec, &cfg)
+                    .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+            }
+            PercentVizOption::Pie => {
+                let read_counts =
+                    ReadCounts::import_from_file(&read_counts_path).with_context(|| {
+                        format!(
+                            "Failed to import Read Counts data from: \'{}\'",
+                            &read_counts_path.display()
+                        )
+                    })?;
+
+                plot_perc_pies(read_counts, &cfg)
+                    .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+            }
+        }
     }
 
     for target in &cfg.targets.list {
