@@ -89,7 +89,8 @@ pub fn plot_coverage(
     let mut coverage_layout = Layout::auto_from_plots(&coverage_plot)
         .with_y_axis_min(min_y - min_y * 0.05)
         .with_y_label("Coverage depth")
-        .with_x_label(format!("{target} position"));
+        .with_x_label(format!("{target} position"))
+        .with_show_grid(false);
 
     //for (position, _consensus_allele, minority_allele, minority_frequency) in variants.data {
     for variant in &variants.data {
@@ -149,6 +150,10 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
     let mut bar = BarPlot::new();
     let expected = pairing_stats.data.get("ExpectedErrorRate");
 
+    if let Some(value) = expected {
+        bar = bar.with_colored_bar("Expected Error", *value, "black");
+    }
+
     for variant in &variants.data {
         let label = format!(
             "{}2{} ({})",
@@ -162,13 +167,9 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
         );
     }
 
-    if let Some(value) = expected {
-        bar = bar.with_colored_bar("Expected Error", *value, "black");
-    }
-
     let bar = vec![bar.into()];
 
-    let bar_layout = Layout::auto_from_plots(&bar);
+    let bar_layout = Layout::auto_from_plots(&bar).with_x_tick_rotate(70.0);
 
     if let Some(value) = expected {
         let bar_layout =
