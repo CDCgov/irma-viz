@@ -17,7 +17,7 @@ struct AllAllelesLine {
 pub struct AllAlleles {
     pub totals: Vec<f64>,
     pub frequencies: Vec<f64>,
-    pub average_qualities: Vec<Option<f64>>,
+    pub average_qualities: AverageQualities,
     pub confidence_not_mac_errs: Vec<Option<f64>>,
 }
 
@@ -27,7 +27,11 @@ impl AllAlleles {
         let mut all_alleles_data = AllAlleles {
             totals: Vec::new(),
             frequencies: Vec::new(),
-            average_qualities: Vec::new(),
+            average_qualities: AverageQualities {
+                data: Vec::new(),
+                min: f64::MAX,
+                max: f64::MIN,
+            },
             confidence_not_mac_errs: Vec::new(),
         };
 
@@ -39,10 +43,18 @@ impl AllAlleles {
             let line: AllAllelesLine = line?;
 
             all_alleles_data.totals.push(line.total);
+
             all_alleles_data.frequencies.push(line.frequency);
-            all_alleles_data
-                .average_qualities
-                .push(line.average_quality);
+
+            if let Some(aq) = line.average_quality {
+                all_alleles_data.average_qualities.data.push(aq);
+                if aq > all_alleles_data.average_qualities.max {
+                    all_alleles_data.average_qualities.max = aq;
+                }
+                if aq < all_alleles_data.average_qualities.min {
+                    all_alleles_data.average_qualities.min = aq;
+                }
+            }
             all_alleles_data
                 .confidence_not_mac_errs
                 .push(line.confidence_not_mac_err);
@@ -50,4 +62,10 @@ impl AllAlleles {
 
         Ok(all_alleles_data)
     }
+}
+
+pub struct AverageQualities {
+    pub data: Vec<f64>,
+    pub min: f64,
+    pub max: f64,
 }

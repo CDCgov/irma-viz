@@ -4,13 +4,6 @@ use kuva::{plot::Histogram, prelude::*};
 
 const NUM_BINS: usize = 50; // from IRMA
 
-pub fn kuva_density(data: Vec<f64>) -> Result<Vec<Plot>> {
-    if data.is_empty() {
-        anyhow::bail!("Density plot has no data");
-    }
-    Ok(vec![DensityPlot::new().with_data(data).into()])
-}
-
 pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
     if data.is_empty() {
         anyhow::bail!("Histogram plot has no data");
@@ -39,54 +32,69 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
     // constants
     let min_aq = cfg.constants.min_aq;
     let min_f = cfg.constants.min_f;
+    let min_tcc = cfg.constants.min_tcc;
     let min_conf = cfg.constants.min_conf;
 
     // Average allele quality density
-    let average_qualities = all_alleles
-        .average_qualities
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
-    let aq_density = kuva_density(average_qualities.clone())
-        .with_context(|| "Average Qualities Density subplot")?;
+    let average_qualities = all_alleles.average_qualities;
+    if average_qualities.data.is_empty() {
+        anyhow::bail!("Density plot has no data");
+    }
+    let aq_density = vec![
+        DensityPlot::new()
+            .with_data(average_qualities.data.clone())
+            .with_x_range(average_qualities.min, average_qualities.max)
+            .into(),
+    ];
     let aq_dens_layout = Layout::auto_from_plots(&aq_density)
         .with_title("Density of average allele quality")
-        .with_reference_line(ReferenceLine::vertical(min_aq))
-        .with_x_axis_min(0.0);
-    // Limited x range Average allele quality density
-    let limited_aq_density = kuva_density(average_qualities)
-        .with_context(|| "Average Qualities Density limited subplot")?;
+        .with_x_axis_min(average_qualities.min)
+        .with_x_axis_max(average_qualities.max)
+        .with_reference_line(ReferenceLine::vertical(min_aq));
+
+    // Limited x range average allele quality density
+    let limited_aq_density = vec![
+        DensityPlot::new()
+            .with_data(average_qualities.data)
+            .with_x_range(average_qualities.min, min_aq)
+            .into(),
+    ];
     let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
         .with_title(format!("to {min_aq}"))
-        .with_x_axis_min(0.0)
+        .with_x_axis_min(average_qualities.min)
         .with_x_axis_max(min_aq);
 
     // Observed frequency density
-    let frequencies = all_alleles
-        .frequencies
-        .into_iter()
-        .filter(|x| *x < 0.1)
-        .collect::<Vec<_>>();
-    let freq_density =
-        kuva_density(frequencies.clone()).with_context(|| "Frequency Density subplot")?;
+    let frequencies = all_alleles.frequencies;
+    let freq_density = vec![
+        DensityPlot::new()
+            .with_data(frequencies.clone())
+            .with_x_range(0.0, 0.1)
+            .into(),
+    ];
     let freq_dens_layout = Layout::auto_from_plots(&freq_density)
         .with_title("Density of observed frequency (to 10%)")
-        .with_reference_line(ReferenceLine::vertical(min_f))
-        .with_x_axis_min(0.0);
+        .with_x_axis_min(0.0)
+        .with_x_axis_max(0.1)
+        .with_reference_line(ReferenceLine::vertical(min_f));
+
     // Limited x range observed frequency density
-    let lim_freq_dens =
-        kuva_density(frequencies).with_context(|| "Frequency Density limited subplot")?;
+    let lim_freq_dens = vec![
+        DensityPlot::new()
+            .with_data(frequencies)
+            .with_x_range(0.0, min_f)
+            .into(),
+    ];
     let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
         .with_title(format!("to {min_f}"))
-        .with_x_axis_max(min_f)
-        .with_x_axis_min(0.0);
+        .with_x_axis_min(0.0)
+        .with_x_axis_max(min_f);
 
     // Coverage histogram
     let coverage_histogram = kuva_histogram(all_alleles.totals, NUM_BINS)
         .with_context(|| "coverage histogram subplot")?;
     let cov_hist_layout = Layout::auto_from_plots(&coverage_histogram)
-        // TODO: find out reference line that goes here? Check IRMA
-        // .with_reference_line(ReferenceLine::vertical(todo!()))
+        .with_reference_line(ReferenceLine::vertical(min_tcc))
         .with_title("Histogram of coverage");
 
     // Machine error confidence histogram
