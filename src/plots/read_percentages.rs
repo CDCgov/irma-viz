@@ -5,7 +5,9 @@ use crate::{
 };
 use anyhow::Result;
 use kuva::{
-    Palette, plot::{PiePlot, SankeyPlot, TextPlot}, prelude::{Figure, Layout, Plot}
+    Palette,
+    plot::{PiePlot, SankeyPlot, TextPlot},
+    prelude::{Figure, Layout, Plot},
 };
 
 pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
@@ -28,11 +30,9 @@ pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
 }
 
 pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
-    // TODO: Auto pick colors
-    // TODO: pie chart values do not need to be based on magnitude, api is proportional
-
     let targets = &cfg.targets.list;
-    let (plots, layouts) = kuva_pies(read_counts, targets);
+    let paired = cfg.plot_specific.read_percent.paired;
+    let (plots, layouts) = kuva_pies(read_counts, targets, paired);
 
     let filename = "READ_PERCENTAGES.svg";
 
@@ -44,9 +44,11 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     render_multiplot(&scene, cfg.output.path.clone(), filename)
 }
 
-fn kuva_pies(read_counts: ReadCounts, targets: &[String]) -> (Vec<Vec<Plot>>, Vec<Layout>) {
-    let paired = true;
-
+fn kuva_pies(
+    read_counts: ReadCounts,
+    targets: &[String],
+    paired: bool,
+) -> (Vec<Vec<Plot>>, Vec<Layout>) {
     let pal = Palette::wong();
 
     let map = read_counts.record_data_map;

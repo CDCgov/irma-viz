@@ -122,6 +122,9 @@ pub struct PlotSpecificArgs {
 
     #[arg(long, value_enum)]
     pub read_percentages_viz: Option<PercentVizOption>,
+
+    #[arg(long)]
+    pub paired: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
@@ -147,6 +150,7 @@ pub struct CoverageConfig {
 #[derive(Debug, Deserialize)]
 pub struct ReadPercentConfig {
     pub viz_option: PercentVizOption,
+    pub paired: bool,
 }
 
 fn merge<T>(target: &mut T, override_val: Option<T>) {
@@ -203,6 +207,10 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     merge(
         &mut cfg.plot_specific.read_percent.viz_option,
         args.plot_specific_args.read_percentages_viz,
+    );
+    merge(
+        &mut cfg.plot_specific.read_percent.paired,
+        args.plot_specific_args.paired,
     );
 
     cfg
