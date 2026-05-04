@@ -1,5 +1,8 @@
 use crate::data::*;
+use anyhow::{Context, Result, anyhow};
 use std::path::Path;
+
+const TOTAL_PROB: f64 = 0.2;
 
 /// TODO: Docs
 #[derive(serde::Deserialize)]
@@ -18,12 +21,12 @@ pub struct AllAlleles {
     pub totals: Vec<f64>,
     pub frequencies: Vec<f64>,
     pub average_qualities: AverageQualities,
-    pub confidence_not_mac_errs: Vec<Option<f64>>,
+    pub confidence_not_mac_errs: Vec<f64>,
 }
 
 impl AllAlleles {
     /// TODO: Docs
-    pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
+    pub fn import_from_file(filename: &Path) -> Result<Self> {
         let mut all_alleles_data = AllAlleles {
             totals: Vec::new(),
             frequencies: Vec::new(),
@@ -37,7 +40,8 @@ impl AllAlleles {
 
         let mut all_alleles_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
-            .from_path(filename)?;
+            .from_path(filename)
+            .with_context(|| format!("Cannot read {}", filename.display()))?;
 
         for line in all_alleles_reader.deserialize() {
             let line: AllAllelesLine = line?;
@@ -55,10 +59,25 @@ impl AllAlleles {
                     all_alleles_data.average_qualities.min = aq;
                 }
             }
-            all_alleles_data
-                .confidence_not_mac_errs
-                .push(line.confidence_not_mac_err);
+
+            if let Some(conf) = line.confidence_not_mac_err
+                && conf > 0.0
+            {
+                all_alleles_data.confidence_not_mac_errs.push(conf);
+            }
         }
+
+        let mx = quantile(&all_alleles_data.totals, TOTAL_PROB).with_context(|| {
+            format!(
+                "Error calculating totals quantile from {}",
+                filename.display(),
+            )
+        })?;
+        all_alleles_data.totals = all_alleles_data
+            .totals
+            .into_iter()
+            .filter(|x| *x < mx)
+            .collect::<Vec<_>>();
 
         Ok(all_alleles_data)
     }
@@ -68,4 +87,30 @@ pub struct AverageQualities {
     pub data: Vec<f64>,
     pub min: f64,
     pub max: f64,
+}
+
+/// The quantile of observations `x` at probability `p`. Assumes all
+/// observations `x` have equal weight. Eurostat definition.
+fn quantile(x: &[f64], p: f64) -> Result<f64> {
+    if x.is_empty() {
+        return Err(anyhow!("Observations must not be empty"));
+    }
+    if !(0.0..=1.0).contains(&p) {
+        return Err(anyhow!("Probability must be between 0.0 and 1.0"));
+    }
+
+    let mut sorted = x.to_vec();
+    sorted.sort_by(|a, b| a.total_cmp(b));
+
+    let n = sorted.len() as f64;
+    let pos = p * (n - 1.0);
+    let lower_idx = pos.floor() as usize;
+    let upper_idx = pos.ceil() as usize;
+
+    Ok(if lower_idx == upper_idx {
+        sorted[lower_idx]
+    } else {
+        let t = pos - lower_idx as f64;
+        sorted[lower_idx] + t * (sorted[upper_idx] - sorted[lower_idx])
+    })
 }

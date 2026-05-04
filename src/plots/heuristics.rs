@@ -94,17 +94,12 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
     let coverage_histogram = kuva_histogram(all_alleles.totals, NUM_BINS)
         .with_context(|| "coverage histogram subplot")?;
     let cov_hist_layout = Layout::auto_from_plots(&coverage_histogram)
+        .with_x_axis_min(0.0)
         .with_reference_line(ReferenceLine::vertical(min_tcc))
         .with_title("Histogram of coverage");
 
     // Machine error confidence histogram
-    let confidence_values = all_alleles
-        .confidence_not_mac_errs
-        .into_iter()
-        .flatten()
-        // TODO: Check data filtering in IRMA scripts
-        .filter(|x| *x != 0.0)
-        .collect::<Vec<_>>();
+    let confidence_values = all_alleles.confidence_not_mac_errs;
     let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
         .with_context(|| "confidence histogram subplot")?;
     let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
