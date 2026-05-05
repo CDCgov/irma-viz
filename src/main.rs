@@ -94,7 +94,7 @@ fn main() -> Result<()> {
             })?;
 
             // clustermap
-            if cfg.plot_toggles.clustermap && variants.data.len() > 1 {
+            if cfg.plot_toggles.clustermap && variants.positions.len() > 1 {
                 let sqm_path = cfg.input.matrix_path.join(format!("{target}-EXPENRD.sqm"));
                 let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
                     format!(

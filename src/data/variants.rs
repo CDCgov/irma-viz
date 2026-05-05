@@ -15,33 +15,54 @@ pub struct Variant {
 
 #[derive(Debug, Clone)]
 pub struct AllVariants {
-    pub data: Vec<Variant>,
+    pub positions: Vec<usize>,
+    pub consensus_alleles: Vec<char>,
+    pub minority_alleles: Vec<char>,
+    pub minority_frequencies: MinorityFrequencies,
 }
 
 impl AllVariants {
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
-        let mut data = Vec::new();
+        let mut variants = AllVariants {
+            positions: Vec::new(),
+            consensus_alleles: Vec::new(),
+            minority_alleles: Vec::new(),
+            minority_frequencies: MinorityFrequencies {
+                data: Vec::new(),
+                min: f64::MAX,
+                max: f64::MIN,
+            },
+        };
 
         let mut variants_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .from_path(filename)?;
 
         for line in variants_reader.deserialize() {
-            let Variant {
-                position,
-                consensus_allele,
-                minority_allele,
-                minority_frequency,
-            } = line?;
+            let variant: Variant = line?;
 
-            data.push(Variant {
-                position,
-                consensus_allele,
-                minority_allele,
-                minority_frequency,
-            });
+            variants.positions.push(variant.position);
+            variants.consensus_alleles.push(variant.consensus_allele);
+            variants.minority_alleles.push(variant.minority_allele);
+            variants
+                .minority_frequencies
+                .data
+                .push(variant.minority_frequency);
+            if variant.minority_frequency > variants.minority_frequencies.max {
+                variants.minority_frequencies.max = variant.minority_frequency;
+            }
+            if variant.minority_frequency < variants.minority_frequencies.min {
+                variants.minority_frequencies.min = variant.minority_frequency;
+            }
         }
 
-        Ok(AllVariants { data })
+        Ok(variants)
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MinorityFrequencies {
+    pub data: Vec<f64>,
+    pub min: f64,
+    pub max: f64,
 }

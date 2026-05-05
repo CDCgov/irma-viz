@@ -1,6 +1,6 @@
 use crate::{
     config::{Config, CoverageColorOption},
-    data::{AllVariants, Coverage, PairingStats, Variant},
+    data::{AllVariants, Coverage, PairingStats},
     plots::{render_multiplot, render_plot},
 };
 use anyhow::Result;
@@ -19,9 +19,9 @@ fn get_allele_color(allele: char) -> String {
 }
 
 /// For coloring allele reference lines based on
-fn map_allele_color(frequency: f64, freq_range: Option<(f64, f64)>) -> String {
+fn map_allele_color(frequency: f64, freq_range: (f64, f64)) -> String {
     let colormap = ColorMap::Viridis;
-    let (min, max) = freq_range.expect("Only gets called if Variant data is not empty");
+    let (min, max) = freq_range;
 
     let normalized_freq = if min == max {
         0.5
@@ -39,29 +39,6 @@ fn min_coverage(coverage: &Coverage) -> f64 {
         .map(|&(_, pos)| pos)
         .min_by(|a, b| a.total_cmp(b))
         .expect("Data is checked for empty and Nones at import.")
-}
-
-fn freq_range(variants: &AllVariants) -> Option<(f64, f64)> {
-    variants
-        .data
-        .iter()
-        .map(
-            |Variant {
-                 position: _,
-                 consensus_allele: _,
-                 minority_allele: _,
-                 minority_frequency,
-             }| *minority_frequency,
-        )
-        .fold(None, |acc, x| {
-            Some(match acc {
-                None => (x, x),
-                Some((min, max)) => (
-                    if x.total_cmp(&min).is_lt() { x } else { min },
-                    if x.total_cmp(&max).is_gt() { x } else { max },
-                ),
-            })
-        })
 }
 
 pub fn kuva_coverage(coverage: Coverage) -> Vec<Plot> {
@@ -82,7 +59,6 @@ pub fn plot_coverage(
     target: &str,
 ) -> Result<()> {
     let min_y = min_coverage(&coverage);
-    let freq_range = freq_range(&variants);
 
     let coverage_plot = kuva_coverage(coverage);
 
@@ -92,30 +68,35 @@ pub fn plot_coverage(
         .with_x_label(format!("{target} position"))
         .with_show_grid(false);
 
-    //for (position, _consensus_allele, minority_allele, minority_frequency) in variants.data {
-    for variant in &variants.data {
+    for i in 0..variants.positions.len() {
         coverage_layout = coverage_layout.with_reference_line(
-            ReferenceLine::vertical(variant.position as f64)
+            ReferenceLine::vertical(variants.positions[i] as f64)
                 // color is chosen based on the plot color option specified in
                 // the config.
                 .with_color(match cfg.plot_specific.coverage.color_option {
                     crate::config::CoverageColorOption::Nucleotide => {
-                        get_allele_color(variant.minority_allele)
+                        get_allele_color(variants.minority_alleles[i])
                     }
                     crate::config::CoverageColorOption::Frequency => {
                         let use_allele_color = pairing_stats
                             .data
                             .get("ExpectedErrorRate")
-                            .is_none_or(|ee| variant.minority_frequency >= *ee);
+                            .is_none_or(|ee| variants.minority_frequencies.data[i] >= *ee);
 
                         if use_allele_color {
-                            map_allele_color(variant.minority_frequency, freq_range)
+                            map_allele_color(
+                                variants.minority_frequencies.data[i],
+                                (
+                                    variants.minority_frequencies.min,
+                                    variants.minority_frequencies.max,
+                                ),
+                            )
                         } else {
                             "#000000".to_owned()
                         }
                     }
                 })
-                .with_label(variant.minority_allele)
+                .with_label(variants.minority_alleles[i])
                 .with_dasharray("8 0"),
         );
     }
@@ -125,7 +106,7 @@ pub fn plot_coverage(
     // skip bar making and multiplot if using frequency for coloring, or if no
     // variants
     if cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
-        && !variants.data.is_empty()
+        && !variants.minority_frequencies.data.is_empty()
     {
         let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
 
@@ -154,16 +135,16 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
         bar = bar.with_colored_bar("Expected Error", *value, "black");
     }
 
-    for variant in &variants.data {
+    for i in 0..variants.positions.len() {
         let label = format!(
             "{}2{} ({})",
-            variant.consensus_allele, variant.minority_allele, variant.position
+            variants.consensus_alleles[i], variants.minority_alleles[i], variants.positions[i]
         );
 
         bar = bar.with_colored_bar(
             label,
-            variant.minority_frequency,
-            get_allele_color(variant.minority_allele),
+            variants.minority_frequencies.data[i],
+            get_allele_color(variants.minority_alleles[i]),
         );
     }
 
