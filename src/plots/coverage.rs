@@ -61,54 +61,72 @@ pub fn plot_coverage(
     let min_y = min_coverage(&coverage);
 
     let coverage_plot = kuva_coverage(coverage);
+    let expected_error = pairing_stats.data.get("ExpectedErrorRate").copied();
+    let show_bar = cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
+        && !variants.minority_frequencies.data.is_empty();
+    let freq_range = (
+        variants.minority_frequencies.min,
+        variants.minority_frequencies.max,
+    );
 
     let mut coverage_layout = Layout::auto_from_plots(&coverage_plot)
         .with_y_axis_min(min_y - min_y * 0.05)
         .with_y_label("Coverage depth")
         .with_x_label(format!("{target} position"))
         .with_show_grid(false);
+    let mut coverage_bar_plot = BarPlot::new();
 
-    for i in 0..variants.positions.len() {
+    if let Some(value) = expected_error
+        && show_bar
+    {
+        coverage_bar_plot = coverage_bar_plot.with_colored_bar("Expected Error", value, "black");
+    }
+
+    for (((position, consensus_allele), minority_allele), minority_frequency) in variants
+        .positions
+        .iter()
+        .zip(&variants.consensus_alleles)
+        .zip(&variants.minority_alleles)
+        .zip(&variants.minority_frequencies.data)
+    {
         coverage_layout = coverage_layout.with_reference_line(
-            ReferenceLine::vertical(variants.positions[i] as f64)
+            ReferenceLine::vertical(*position as f64)
                 // color is chosen based on the plot color option specified in
                 // the config.
-                .with_color(match cfg.plot_specific.coverage.color_option {
-                    crate::config::CoverageColorOption::Nucleotide => {
-                        get_allele_color(variants.minority_alleles[i])
-                    }
-                    crate::config::CoverageColorOption::Frequency => {
-                        let use_allele_color = pairing_stats
-                            .data
-                            .get("ExpectedErrorRate")
-                            .is_none_or(|ee| variants.minority_frequencies.data[i] >= *ee);
-
-                        if use_allele_color {
-                            map_allele_color(
-                                variants.minority_frequencies.data[i],
-                                (
-                                    variants.minority_frequencies.min,
-                                    variants.minority_frequencies.max,
-                                ),
-                            )
-                        } else {
-                            "#000000".to_owned()
+                .with_color(
+                    if expected_error.is_none_or(|ee| *minority_frequency >= ee) {
+                        match cfg.plot_specific.coverage.color_option {
+                            crate::config::CoverageColorOption::Nucleotide => {
+                                get_allele_color(*minority_allele)
+                            }
+                            crate::config::CoverageColorOption::Frequency => {
+                                map_allele_color(*minority_frequency, freq_range)
+                            }
                         }
-                    }
-                })
-                .with_label(variants.minority_alleles[i])
+                    } else {
+                        "#000000".to_owned()
+                    },
+                )
+                .with_label(*minority_allele)
                 .with_dasharray("8 0"),
         );
+
+        if show_bar {
+            let label = format!("{consensus_allele}2{minority_allele} ({position})");
+            coverage_bar_plot = coverage_bar_plot.with_colored_bar(
+                label,
+                *minority_frequency,
+                get_allele_color(*minority_allele),
+            );
+        }
     }
 
     let filename = format!("{target}-coverageDiagram.svg");
 
     // skip bar making and multiplot if using frequency for coloring, or if no
     // variants
-    if cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
-        && !variants.minority_frequencies.data.is_empty()
-    {
-        let (coverage_bar, bar_layout) = coverage_bar(&variants, pairing_stats);
+    if show_bar {
+        let (coverage_bar, bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
 
         let scene = Figure::new(2, 1)
             .with_plots(vec![coverage_plot, coverage_bar])
@@ -127,27 +145,7 @@ pub fn plot_coverage(
 /// Creates a bar of the minor variants, using labels such as A2C, for a
 /// concensus A with a variant C. The bars are colored based on the nucleotide
 /// of the variant, with heights based on the observed frequency of that variant.
-pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec<Plot>, Layout) {
-    let mut bar = BarPlot::new();
-    let expected = pairing_stats.data.get("ExpectedErrorRate");
-
-    if let Some(value) = expected {
-        bar = bar.with_colored_bar("Expected Error", *value, "black");
-    }
-
-    for i in 0..variants.positions.len() {
-        let label = format!(
-            "{}2{} ({})",
-            variants.consensus_alleles[i], variants.minority_alleles[i], variants.positions[i]
-        );
-
-        bar = bar.with_colored_bar(
-            label,
-            variants.minority_frequencies.data[i],
-            get_allele_color(variants.minority_alleles[i]),
-        );
-    }
-
+pub fn coverage_bar(bar: BarPlot, expected: Option<f64>) -> (Vec<Plot>, Layout) {
     let bar = vec![bar.into()];
 
     let bar_layout = Layout::auto_from_plots(&bar)
@@ -157,7 +155,7 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
 
     if let Some(value) = expected {
         let bar_layout =
-            bar_layout.with_reference_line(ReferenceLine::horizontal(*value).with_color("black"));
+            bar_layout.with_reference_line(ReferenceLine::horizontal(value).with_color("black"));
         (bar, bar_layout)
     } else {
         (bar, bar_layout)
