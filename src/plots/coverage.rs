@@ -169,7 +169,10 @@ pub fn coverage_bar(variants: &AllVariants, pairing_stats: PairingStats) -> (Vec
 
     let bar = vec![bar.into()];
 
-    let bar_layout = Layout::auto_from_plots(&bar).with_x_tick_rotate(70.0);
+    let bar_layout = Layout::auto_from_plots(&bar)
+        .with_x_tick_rotate(70.0)
+        .with_x_label("Minor Variants")
+        .with_y_label("Observed Frequency");
 
     if let Some(value) = expected {
         let bar_layout =
