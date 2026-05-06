@@ -30,7 +30,6 @@ fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
 }
 
 pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
-    let targets = &cfg.targets.list;
     let paired = cfg.plot_specific.read_percent.paired;
 
     let pal = Palette::wong();
@@ -43,7 +42,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     let vals = [assembled, nonqual, therest];
     let legend_labels = ["Assembled", "QC filtered", "Other"];
-    let (legend_entries, total_pie) = kuva_pie(&vals, &legend_labels, pal);
+    let (legend_entries, total_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
     let total_pie = vec![
         total_pie
@@ -65,14 +64,13 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     // ------------------- Passing QC -----------------------
 
     let assembled = read_counts.pattern("3-match");
-    let total = read_counts.pattern("2-passQC");
     let chimeric = read_counts.pattern("3-chimeric");
     let unused = read_counts.pattern("3-unrecognizable") + read_counts.pattern("3-altmatch");
     let unmatched = read_counts.pattern("3-nomatch");
 
     let vals = [assembled, unused, chimeric, unmatched];
-    let legend_lables = ["Assembled", "Unusable", "Chimeric", "No match"];
-    let (legend_entries, passed_qc_pie) = kuva_pie(&vals, &legend_labels, pal);
+    let legend_labels = ["Assembled", "Unusable", "Chimeric", "No match"];
+    let (legend_entries, passed_qc_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
     let passed_qc_pie = vec![
         passed_qc_pie
@@ -86,39 +84,41 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         .with_legend_entries(legend_entries);
 
     // -------------------- Matches -----------------------
-    let primary_matches = targets
-        .iter()
-        .map(|target| {
-            let mut prefix_target = String::from("4-");
-            prefix_target.push_str(target);
-            (target.as_str(), *map.get(&prefix_target).unwrap_or(&0.0))
+    let (vals, legend_labels): (Vec<_>, Vec<_>) = read_counts
+        .map
+        .keys()
+        .filter_map(|key| {
+            key.strip_prefix("4-")
+                .map(|record| (read_counts.pairs_and_windows(key), record))
         })
-        .collect::<Vec<_>>();
+        .unzip();
+    let (legend_entries, match_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
-    let mut match_pie = PiePlot::new()
-        .with_percent()
-        .with_label_position(kuva::plot::PieLabelPosition::Outside);
-    //.with_legend("Primary Classification")
+    let match_pie = vec![
+        match_pie
+            .with_legend("")
+            .with_percent()
+            .with_label_position(kuva::plot::PieLabelPosition::Outside)
+            .into(),
+    ];
+    let match_layout = Layout::auto_from_plots(&match_pie)
+        .with_title({
+            if paired {
+                "3. Percentages of assembled, merged-pair reads"
+            } else {
+                "3. Percentages of assembled reads"
+            }
+        })
+        .with_legend_entries(legend_entries);
 
-    for (index, (label, value)) in primary_matches.into_iter().enumerate() {
-        let color = &pal[index];
-        match_pie = match_pie.with_slice(label, value, color);
-    }
-    let match_pie = vec![match_pie.into()];
-    let match_layout = Layout::auto_from_plots(&match_pie).with_title({
-        if paired {
-            "3. Percentages of assembled, merged-pair reads"
-        } else {
-            "3. Percentages of assembled reads"
-        }
-    });
-
+    // --------------------- Text Box -----------------
     let text_box = TextPlot::new()
         .with_body(if paired { PAIRED_README } else { SINGLE_README })
         .with_padding(0.0);
     let text_box = vec![text_box.into()];
     let text_box_layout = Layout::auto_from_plots(&text_box);
 
+    // ---------------------- Multi-Plot ----------------------------
     let plots = vec![total_pie, passed_qc_pie, match_pie, text_box];
     let layouts = vec![
         total_layout,
@@ -137,22 +137,8 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     render_multiplot(&scene, cfg.output.path.clone(), filename)
 }
 
-fn make_slice_labels(vals: &[f64]) -> Vec<String> {
-    let mut slice_labels = Vec::with_capacity(vals.len());
-    for &val in vals {
-        if val >= 1_000_000.0 {
-            slice_labels.push(format!("{:.1}M", val / 1_000_000.0))
-        } else if val >= 1_000.0 {
-            slice_labels.push(format!("{:.1}k", val / 1_000.0))
-        } else {
-            slice_labels.push(format!("{val}"))
-        }
-    }
-    slice_labels
-}
-
-fn kuva_pie(vals: &[f64], legend_labels: &[&str], pal: Palette) -> (Vec<LegendEntry>, PiePlot) {
-    let slice_labels = make_slice_labels(&vals);
+fn kuva_pie(vals: &[f64], legend_labels: &[&str], pal: &Palette) -> (Vec<LegendEntry>, PiePlot) {
+    let slice_labels = make_slice_labels(vals);
     let mut legend_entries = Vec::with_capacity(legend_labels.len());
     let mut pie = PiePlot::new();
     for (idx, ((&val, slice_label), &legend_label)) in
@@ -167,6 +153,20 @@ fn kuva_pie(vals: &[f64], legend_labels: &[&str], pal: Palette) -> (Vec<LegendEn
         })
     }
     (legend_entries, pie)
+}
+
+fn make_slice_labels(vals: &[f64]) -> Vec<String> {
+    let mut slice_labels = Vec::with_capacity(vals.len());
+    for &val in vals {
+        if val >= 1_000_000.0 {
+            slice_labels.push(format!("{:.1}M", val / 1_000_000.0))
+        } else if val >= 1_000.0 {
+            slice_labels.push(format!("{:.1}k", val / 1_000.0))
+        } else {
+            slice_labels.push(format!("{val}"))
+        }
+    }
+    slice_labels
 }
 
 const SINGLE_README: &str = "# READ PROPORTIONS.\n\
