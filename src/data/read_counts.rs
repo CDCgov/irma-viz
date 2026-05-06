@@ -66,7 +66,7 @@ impl ReadCounts {
         }
     }
 
-    pub fn pairs_and_windows(&self, key: &str) -> f64 {
+    pub fn pairs_and_widows(&self, key: &str) -> f64 {
         match self.map.get(key) {
             Some(data) => data.pairs_and_windows.unwrap_or(0.0),
             None => 0.0,

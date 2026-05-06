@@ -87,7 +87,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
             .keys()
             .filter_map(|key| {
                 key.strip_prefix("4-")
-                    .map(|record| (record, read_counts.pairs_and_windows(key)))
+                    .map(|record| (record, read_counts.pairs_and_widows(key)))
             })
             .collect::<Vec<_>>();
 
@@ -95,9 +95,12 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         pairs.into_iter().unzip()
     };
 
+    let total = vals.iter().sum::<f64>();
     let mut slice_labels = Vec::with_capacity(vals.len());
     for (&val, target) in vals.iter().zip(targets) {
-        if val >= 1_000_000.0 {
+        if val / total < 0.02 {
+            slice_labels.push(target.to_string())
+        } else if val >= 1_000_000.0 {
             slice_labels.push(format!("{target}: {:.1}M", val / 1_000_000.0))
         } else if val >= 1_000.0 {
             slice_labels.push(format!("{target}: {:.1}k", val / 1_000.0))
