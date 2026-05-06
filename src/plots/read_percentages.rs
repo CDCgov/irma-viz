@@ -44,13 +44,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let legend_labels = ["Assembled", "QC filtered", "Other"];
     let (legend_entries, total_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
-    let total_pie = vec![
-        total_pie
-            .with_legend("")
-            .with_percent()
-            //.with_label_position(kuva::plot::PieLabelPosition::Outside)
-            .into(),
-    ];
+    let total_pie = vec![total_pie.with_legend("").with_percent().into()];
     let total_layout = Layout::auto_from_plots(&total_pie)
         .with_title({
             if paired {
@@ -59,7 +53,8 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
                 "1. Percentages of total reads"
             }
         })
-        .with_legend_entries(legend_entries);
+        .with_legend_entries(legend_entries)
+        .with_legend_position(kuva::plot::LegendPosition::OutsideRightBottom);
 
     // ------------------- Passing QC -----------------------
 
@@ -81,35 +76,55 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     ];
     let passed_qc_layout = Layout::auto_from_plots(&passed_qc_pie)
         .with_title("2. Percentages of all read patterns passing QC")
-        .with_legend_entries(legend_entries);
+        .with_legend_entries(legend_entries)
+        .with_legend_position(kuva::plot::LegendPosition::OutsideRightBottom);
 
-    // -------------------- Matches -----------------------
-    let (vals, legend_labels): (Vec<_>, Vec<_>) = read_counts
-        .map
-        .keys()
-        .filter_map(|key| {
-            key.strip_prefix("4-")
-                .map(|record| (read_counts.pairs_and_windows(key), record))
-        })
-        .unzip();
-    let (legend_entries, match_pie) = kuva_pie(&vals, &legend_labels, &pal);
+    // -------------------- Matches --------------------------------------------
+
+    let (targets, vals): (Vec<_>, Vec<_>) = {
+        let mut pairs = read_counts
+            .map
+            .keys()
+            .filter_map(|key| {
+                key.strip_prefix("4-")
+                    .map(|record| (record, read_counts.pairs_and_windows(key)))
+            })
+            .collect::<Vec<_>>();
+
+        pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
+        pairs.into_iter().unzip()
+    };
+
+    let mut slice_labels = Vec::with_capacity(vals.len());
+    for (&val, target) in vals.iter().zip(targets) {
+        if val >= 1_000_000.0 {
+            slice_labels.push(format!("{target}: {:.1}M", val / 1_000_000.0))
+        } else if val >= 1_000.0 {
+            slice_labels.push(format!("{target}: {:.1}k", val / 1_000.0))
+        } else {
+            slice_labels.push(format!("{target}: {val}"))
+        }
+    }
+
+    let mut match_pie = PiePlot::new();
+    for (idx, (&val, slice_label)) in vals.iter().zip(slice_labels).enumerate() {
+        match_pie = match_pie.with_slice(slice_label, val, &pal[idx]);
+    }
 
     let match_pie = vec![
         match_pie
-            .with_legend("")
+            //.with_legend("")
             .with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
-    let match_layout = Layout::auto_from_plots(&match_pie)
-        .with_title({
-            if paired {
-                "3. Percentages of assembled, merged-pair reads"
-            } else {
-                "3. Percentages of assembled reads"
-            }
-        })
-        .with_legend_entries(legend_entries);
+    let match_layout = Layout::auto_from_plots(&match_pie).with_title({
+        if paired {
+            "3. Percentages of assembled, merged-pair reads"
+        } else {
+            "3. Percentages of assembled reads"
+        }
+    });
 
     // --------------------- Text Box -----------------
     let text_box = TextPlot::new()
