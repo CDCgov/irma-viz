@@ -86,7 +86,7 @@ fn kuva_pies(
         legend_entries.push(LegendEntry {
             label: legend_label.into(),
             color: pal[idx].to_string(),
-            shape: LegendShape::Circle,
+            shape: LegendShape::Rect,
             dasharray: None,
         })
     }
@@ -94,17 +94,19 @@ fn kuva_pies(
         total_pie
             .with_legend("")
             .with_percent()
-            .with_label_position(kuva::plot::PieLabelPosition::Inside)
+            //.with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
 
-    let total_layout = Layout::auto_from_plots(&total_pie).with_title({
-        if paired {
-            "1. Percentages of total reads (R1 + R2)"
-        } else {
-            "1. Percentages of total reads"
-        }
-    }).with_legend_entries(legend_entries);
+    let total_layout = Layout::auto_from_plots(&total_pie)
+        .with_title({
+            if paired {
+                "1. Percentages of total reads (R1 + R2)"
+            } else {
+                "1. Percentages of total reads"
+            }
+        })
+        .with_legend_entries(legend_entries);
 
     let primary = *map.get("3-match").unwrap_or(&0.0);
     let alt = *map.get("3-altmatch").unwrap_or(&0.0);
