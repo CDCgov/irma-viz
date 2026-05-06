@@ -27,4 +27,4 @@ variant_color = "nucleotide" # either "nucleotide" for original configuration, o
 
 [percent_options]
 viz_option = "pie" # either "sankey" or "pie"
-paired = false
+paired = true

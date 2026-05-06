@@ -3,10 +3,10 @@ use crate::{
     data::{ReadCounts, SankeyVec},
     plots::{render_multiplot, render_plot},
 };
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow};
 use kuva::{
     Palette,
-    plot::{PiePlot, SankeyPlot, TextPlot},
+    plot::{LegendEntry, LegendShape, PiePlot, SankeyPlot, TextPlot},
     prelude::{Figure, Layout, Plot},
 };
 
@@ -32,7 +32,8 @@ pub fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
 pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let targets = &cfg.targets.list;
     let paired = cfg.plot_specific.read_percent.paired;
-    let (plots, layouts) = kuva_pies(read_counts, targets, paired);
+    let (plots, layouts) = kuva_pies(read_counts, targets, paired)
+        .with_context(|| "Unable to generate Read Percents pie charts")?;
 
     let filename = "READ_PERCENTAGES.svg";
 
@@ -48,27 +49,62 @@ fn kuva_pies(
     read_counts: ReadCounts,
     targets: &[String],
     paired: bool,
-) -> (Vec<Vec<Plot>>, Vec<Layout>) {
+) -> anyhow::Result<(Vec<Vec<Plot>>, Vec<Layout>)> {
     let pal = Palette::wong();
 
     let map = read_counts.record_data_map;
-    let pass_qc = *map.get("2-passQC").unwrap_or(&0.0);
-    let fail_qc = *map.get("2-failQC").unwrap_or(&0.0);
+    let Some(total) = map.get("1-initial") else {
+        return Err(anyhow!("READ_COUNTS.txt missing \"1-initial\" field."));
+    };
+    let Some(nonqual) = map.get("2-failQC") else {
+        return Err(anyhow!("READ_COUNTS.txt missing \"2-failQC\" field."));
+    };
+    let Some(assembled) = map.get("3-match") else {
+        return Err(anyhow!("READ_COUNTS.txt missing \"3-match\" field."));
+    };
+    let therest = total - nonqual - assembled;
 
-    let total_pie = PiePlot::new()
-        .with_slice("Pass QC", pass_qc, &pal[0])
-        .with_slice("Fail QC", fail_qc, &pal[1])
-        .with_legend("QC result")
-        .with_percent()
-        .with_label_position(kuva::plot::PieLabelPosition::Outside);
-    let total_pie = vec![total_pie.into()];
+    let vals = [*assembled, *nonqual, therest];
+    let mut slice_labels = Vec::with_capacity(vals.len());
+    for val in vals {
+        if val >= 1_000_000.0 {
+            slice_labels.push(format!("{:.1}M", val / 1_000_000.0))
+        } else if val >= 1_000.0 {
+            slice_labels.push(format!("{:.1}k", val / 1_000.0))
+        } else {
+            slice_labels.push(format!("{val}"))
+        }
+    }
+    let legend_labels = ["Assembled", "QC filtered", "Other"];
+    let mut legend_entries = Vec::with_capacity(legend_labels.len());
+
+    let mut total_pie = PiePlot::new();
+    for (idx, ((&val, slice_label), legend_label)) in
+        vals.iter().zip(slice_labels).zip(legend_labels).enumerate()
+    {
+        total_pie = total_pie.with_slice(slice_label, val, &pal[idx]);
+        legend_entries.push(LegendEntry {
+            label: legend_label.into(),
+            color: pal[idx].to_string(),
+            shape: LegendShape::Circle,
+            dasharray: None,
+        })
+    }
+    let total_pie = vec![
+        total_pie
+            .with_legend("")
+            .with_percent()
+            .with_label_position(kuva::plot::PieLabelPosition::Inside)
+            .into(),
+    ];
+
     let total_layout = Layout::auto_from_plots(&total_pie).with_title({
         if paired {
             "1. Percentages of total reads (R1 + R2)"
         } else {
             "1. Percentages of total reads"
         }
-    });
+    }).with_legend_entries(legend_entries);
 
     let primary = *map.get("3-match").unwrap_or(&0.0);
     let alt = *map.get("3-altmatch").unwrap_or(&0.0);
@@ -120,7 +156,7 @@ fn kuva_pies(
     let text_box = vec![text_box.into()];
     let text_box_layout = Layout::auto_from_plots(&text_box);
 
-    (
+    Ok((
         vec![total_pie, passed_qc_pie, match_pie, text_box],
         vec![
             total_layout,
@@ -128,7 +164,7 @@ fn kuva_pies(
             match_layout,
             text_box_layout,
         ],
-    )
+    ))
 }
 
 const SINGLE_README: &str = "# READ PROPORTIONS.\n\
