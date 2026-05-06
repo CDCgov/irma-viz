@@ -1,3 +1,4 @@
+use crate::data::option_float;
 use std::{collections::HashMap, path::Path};
 
 #[derive(Debug, serde::Deserialize)]
@@ -7,19 +8,30 @@ struct ReadCountsLine {
     pub record: String,
     #[serde(rename = "Reads")]
     pub read: f64,
+    #[serde(rename = "Patterns", deserialize_with = "option_float")]
+    pub pattern: Option<f64>,
+    #[serde(rename = "PairsAndWindows", deserialize_with = "option_float")]
+    pub p_a_w: Option<f64>,
 }
 
 #[derive(Debug)]
 /// TODO: Docs
 pub struct ReadCounts {
-    pub record_data_map: HashMap<String, f64>,
+    pub map: HashMap<String, Data>,
+}
+
+#[derive(Debug)]
+pub struct Data {
+    pub read: f64,
+    pub pattern: Option<f64>,
+    pub pairs_and_windows: Option<f64>,
 }
 
 impl ReadCounts {
     #[allow(unused)]
     /// TODO: Docs
     pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
-        let mut record_data_map = HashMap::new();
+        let mut map = HashMap::new();
 
         let mut read_counts_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -27,10 +39,38 @@ impl ReadCounts {
 
         for line in read_counts_reader.deserialize() {
             let line: ReadCountsLine = line?;
-            record_data_map.insert(line.record, line.read);
+            map.insert(
+                line.record,
+                Data {
+                    read: line.read,
+                    pattern: line.pattern,
+                    pairs_and_windows: line.p_a_w,
+                },
+            );
         }
 
-        Ok(ReadCounts { record_data_map })
+        Ok(ReadCounts { map })
+    }
+
+    pub fn read(&self, key: &str) -> f64 {
+        match self.map.get(key) {
+            Some(data) => data.read,
+            None => 0.0,
+        }
+    }
+
+    pub fn pattern(&self, key: &str) -> f64 {
+        match self.map.get(key) {
+            Some(data) => data.pattern.unwrap_or(0.0),
+            None => 0.0,
+        }
+    }
+
+    pub fn pairs_and_windows(&self, key: &str) -> f64 {
+        match self.map.get(key) {
+            Some(data) => data.pairs_and_windows.unwrap_or(0.0),
+            None => 0.0,
+        }
     }
 }
 
