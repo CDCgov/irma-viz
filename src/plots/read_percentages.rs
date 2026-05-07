@@ -3,7 +3,7 @@ use crate::{
     data::{ReadCounts, SankeyVec},
     plots::{render_multiplot, render_plot},
 };
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use kuva::{
     Palette,
     plot::{LegendEntry, LegendShape, PiePlot, SankeyPlot, TextPlot},
@@ -35,13 +35,30 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let pal = Palette::wong();
 
     // --------------------- Totals Pie Chart -----------------------
+    let mut vals = Vec::with_capacity(3);
+    let mut legend_labels = Vec::with_capacity(3);
+
     let total = read_counts.read("1-initial");
     let nonqual = read_counts.read("2-failQC");
     let assembled = read_counts.read("3-match");
     let therest = total - nonqual - assembled;
 
-    let vals = [assembled, nonqual, therest];
-    let legend_labels = ["Assembled", "QC filtered", "Other"];
+    if assembled > 0.0 {
+        vals.push(assembled);
+        legend_labels.push("Assembled");
+    }
+    if nonqual > 0.0 {
+        vals.push(assembled);
+        legend_labels.push("QC filtered");
+    }
+    if therest > 0.0 {
+        vals.push(assembled);
+        legend_labels.push("Other");
+    }
+
+    if vals.is_empty() {
+        return Err(anyhow!("Empty Totals pie chart in READ_PERCENTAGES"));
+    }
     let (legend_entries, total_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
     let total_pie = vec![total_pie.with_legend("").with_percent().into()];
@@ -57,14 +74,34 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         .with_legend_position(kuva::plot::LegendPosition::OutsideRightBottom);
 
     // ------------------- Passing QC -----------------------
+    let mut vals = Vec::with_capacity(4);
+    let mut legend_labels = Vec::with_capacity(4);
 
     let assembled = read_counts.pattern("3-match");
     let chimeric = read_counts.pattern("3-chimeric");
     let unused = read_counts.pattern("3-unrecognizable") + read_counts.pattern("3-altmatch");
     let unmatched = read_counts.pattern("3-nomatch");
 
-    let vals = [assembled, unused, chimeric, unmatched];
-    let legend_labels = ["Assembled", "Unusable", "Chimeric", "No match"];
+    if assembled > 0.0 {
+        vals.push(assembled);
+        legend_labels.push("Assembled");
+    }
+    if unused > 0.0 {
+        vals.push(unused);
+        legend_labels.push("Unusable");
+    }
+    if chimeric > 0.0 {
+        vals.push(chimeric);
+        legend_labels.push("Chimeric");
+    }
+    if unmatched > 0.0 {
+        vals.push(unmatched);
+        legend_labels.push("No match");
+    }
+
+    if vals.is_empty() {
+        return Err(anyhow!("Empty Pass QC pie chart in READ_PERCENTAGES"));
+    }
     let (legend_entries, passed_qc_pie) = kuva_pie(&vals, &legend_labels, &pal);
 
     let passed_qc_pie = vec![
@@ -96,6 +133,9 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     };
 
     let total = vals.iter().sum::<f64>();
+    if total == 0.0 {
+        return Err(anyhow!("Empty Matches pie chart in READ_PERCENTAGES"))
+    }
     let mut slice_labels = Vec::with_capacity(vals.len());
     for (&val, target) in vals.iter().zip(targets) {
         if val / total < 0.02 {

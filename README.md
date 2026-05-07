@@ -58,26 +58,29 @@ cargo run -- --config path/to/config.toml --coverage-variant-color frequency --r
 Current help output:
 
 ```text
+Render IRMA plots to SVG
+
 Usage: irma-viz [OPTIONS]
 
 Options:
-      --config <CONFIG>                      Path to config TOML [default: config.toml]
-  -t, --targets <TARGETS>                    Target organisms to plot
-      --table-path <TABLE_PATH>              Path where the input data tables are held
-      --matrix-path <MATRIX_PATH>            Path where the input matrices are held
-      --output <OUTPUT>                      Output SVG path override
-      --read-percentages <READ_PERCENTAGES>  [possible values: true, false]
-      --heuristics <HEURISTICS>              [possible values: true, false]
-      --coverage <COVERAGE>                  [possible values: true, false]
-      --clustermap <CLUSTERMAP>              [possible values: true, false]
+      --config <CONFIG>                                  Path to config TOML [default: config.toml]
+  -t, --targets <TARGETS>                                Target organisms to plot
+      --table-path <TABLE_PATH>                          Path where the input data tables are held
+      --matrix-path <MATRIX_PATH>                        Path where the input matrices are held
+      --output <OUTPUT>                                  Output SVG path override
+      --read-percentages <READ_PERCENTAGES>              [possible values: true, false]
+      --heuristics <HEURISTICS>                          [possible values: true, false]
+      --coverage <COVERAGE>                              [possible values: true, false]
+      --clustermap <CLUSTERMAP>                          [possible values: true, false]
       --min-aq <MIN_AQ>
       --min-f <MIN_F>
       --min-tcc <MIN_TCC>
       --min-conf <MIN_CONF>
       --coverage-variant-color <COVERAGE_VARIANT_COLOR>  [possible values: nucleotide, frequency]
       --read-percentages-viz <READ_PERCENTAGES_VIZ>      [possible values: sankey, pie]
-  -h, --help                                 Print help
-  -V, --version                              Print version
+      --paired <PAIRED>                                  [possible values: true, false]
+  -h, --help                                             Print help
+  -V, --version                                          Print version
 ```
 
 ## Config

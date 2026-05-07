@@ -91,41 +91,43 @@ pub fn plot_coverage(
             .zip(&variants.minority_frequencies.data)
             .enumerate()
     {
-        // Check if this label would overlap with any previous labels
-        // TODO: Try to break this by going off the bottom axis; test
-        let mut annotation_y_pos = (coverage.coverage[position.saturating_sub(1)] + min_y) / 2.0;
-        for prev_index in (0..index).rev() {
-            let prev_pos = variants.positions[prev_index];
-            let distance = position.abs_diff(prev_pos);
-            if OFFSET > distance as f64 && annotation_y_pos - 2.5 * OFFSET > min_y {
-                annotation_y_pos -= 2.5 * OFFSET;
-            }
-        }
-
-        coverage_layout = coverage_layout
-            .with_reference_line(
-                ReferenceLine::vertical(position as f64)
-                    .with_color(
-                        if expected_error.is_none_or(|ee| minority_frequency >= ee) {
-                            match cfg.plot_specific.coverage.color_option {
-                                crate::config::CoverageColorOption::Nucleotide => {
-                                    get_allele_color(minority_allele)
-                                }
-                                crate::config::CoverageColorOption::Frequency => {
-                                    map_allele_color(minority_frequency, freq_range)
-                                }
+        coverage_layout = coverage_layout.with_reference_line(
+            ReferenceLine::vertical(position as f64)
+                .with_color(
+                    if expected_error.is_none_or(|ee| minority_frequency >= ee) {
+                        match cfg.plot_specific.coverage.color_option {
+                            crate::config::CoverageColorOption::Nucleotide => {
+                                get_allele_color(minority_allele)
                             }
-                        } else {
-                            "#000000".to_owned()
-                        },
-                    )
-                    .with_dasharray("8 0"),
-            )
-            .with_annotation(TextAnnotation::new(
+                            crate::config::CoverageColorOption::Frequency => {
+                                map_allele_color(minority_frequency, freq_range)
+                            }
+                        }
+                    } else {
+                        "#000000".to_owned()
+                    },
+                )
+                .with_dasharray("8 0"),
+        );
+
+        if position <= coverage.coverage.len() && position != 0 {
+            // Check if this label would overlap with any previous labels
+            // TODO: Try to break this by going off the bottom axis; test
+            let mut annotation_y_pos =
+                (coverage.coverage[position.saturating_sub(1)] + min_y) / 2.0;
+            for prev_index in (0..index).rev() {
+                let prev_pos = variants.positions[prev_index];
+                let distance = position.abs_diff(prev_pos);
+                if OFFSET > distance as f64 && annotation_y_pos - 2.5 * OFFSET > min_y {
+                    annotation_y_pos -= 2.5 * OFFSET;
+                }
+            }
+            coverage_layout = coverage_layout.with_annotation(TextAnnotation::new(
                 minority_allele,
                 (position as f64) + OFFSET,
                 annotation_y_pos,
             ));
+        }
 
         if show_bar {
             let label = format!("{consensus_allele}2{minority_allele} ({position})");

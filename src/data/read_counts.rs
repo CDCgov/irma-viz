@@ -101,6 +101,7 @@ impl SankeyVec {
                 "3-nomatch" => (String::from("Pass QC"), String::from("No Match"), read),
                 "3-altmatch" => (String::from("Pass QC"), String::from("Alt Match"), read),
                 "3-chimeric" => (String::from("Pass QC"), String::from("Chimeric"), read),
+                "3-unrecognizable" => (String::from("Pass QC"), String::from("Unrecognized"), read),
                 _ => {
                     // TODO: check matches vs targets list
                     if let Some(record) = line.record.as_str().strip_prefix("4-") {
