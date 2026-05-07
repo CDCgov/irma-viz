@@ -48,11 +48,11 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         legend_labels.push("Assembled");
     }
     if nonqual > 0.0 {
-        vals.push(assembled);
+        vals.push(nonqual);
         legend_labels.push("QC filtered");
     }
     if therest > 0.0 {
-        vals.push(assembled);
+        vals.push(therest);
         legend_labels.push("Other");
     }
 
