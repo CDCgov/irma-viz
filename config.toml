@@ -28,3 +28,6 @@ variant_color = "nucleotide" # either "nucleotide" for original configuration, o
 [percent_options]
 viz_option = "pie" # either "sankey" or "pie"
 paired = true
+
+[cluster_options]
+cluster_option = "clustermap" # either "clustermap" or "heatmap"

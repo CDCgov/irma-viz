@@ -1,10 +1,10 @@
 //! TODO: Docs
 
 use crate::{
-    config::{Args, PercentVizOption, apply_cli_overrides, load_config},
+    config::{Args, ClusterOption, PercentVizOption, apply_cli_overrides, load_config},
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     plots::{
-        clustermap::plot_clustermap,
+        clustermap::{plot_clustermap, plot_heat_phylo},
         coverage::plot_coverage,
         heuristics::plot_heuristics,
         read_percentages::{plot_perc_pies, plot_perc_sankey},
@@ -102,9 +102,12 @@ fn main() -> Result<()> {
                         &sqm_path.display()
                     )
                 })?;
-
-                plot_clustermap(sqm, &cfg, target)
-                    .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?
+                match cfg.plot_specific.cluster_config.cluster_option {
+                    ClusterOption::Clustermap => plot_clustermap(sqm, &cfg, target)
+                        .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
+                    ClusterOption::Heatmap => plot_heat_phylo(sqm, &cfg, target)
+                        .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
+                }
             }
 
             if cfg.plot_toggles.coverage {

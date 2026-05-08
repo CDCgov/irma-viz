@@ -113,6 +113,9 @@ pub struct PlotSpecificConfig {
 
     #[serde(rename = "percent_options")]
     pub read_percent: ReadPercentConfig,
+
+    #[serde(rename = "cluster_options")]
+    pub cluster_config: ClusterConfig,
 }
 
 #[derive(Debug, Parser)]
@@ -125,6 +128,9 @@ pub struct PlotSpecificArgs {
 
     #[arg(long)]
     pub paired: Option<bool>,
+
+    #[arg(long)]
+    pub cluster_option: Option<ClusterOption>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
@@ -141,10 +147,22 @@ pub enum PercentVizOption {
     Pie,
 }
 
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
+#[serde(rename_all = "snake_case")]
+pub enum ClusterOption {
+    Clustermap,
+    Heatmap,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CoverageConfig {
     #[serde(rename = "variant_color")]
     pub color_option: CoverageColorOption,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClusterConfig {
+    pub cluster_option: ClusterOption,
 }
 
 #[derive(Debug, Deserialize)]
@@ -211,6 +229,10 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     merge(
         &mut cfg.plot_specific.read_percent.paired,
         args.plot_specific_args.paired,
+    );
+    merge(
+        &mut cfg.plot_specific.cluster_config.cluster_option,
+        args.plot_specific_args.cluster_option,
     );
 
     cfg
