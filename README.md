@@ -50,7 +50,13 @@ cargo run -- --config path/to/config.toml --min-aq 24 --min-f 0.008 --min-tcc 10
 To override plot-specific options from the command line:
 
 ```bash
-cargo run -- --config path/to/config.toml --coverage-variant-color frequency --read-percentages-viz pie
+cargo run -- --config path/to/config.toml --coverage-variant-color frequency --read-percentages-viz pie --paired true --cluster-option tree
+```
+
+To override clustering layout height:
+
+```bash
+cargo run -- --config path/to/config.toml --tree-height 0.78
 ```
 
 ## CLI
@@ -76,9 +82,11 @@ Options:
       --min-f <MIN_F>
       --min-tcc <MIN_TCC>
       --min-conf <MIN_CONF>
+      --tree-height <TREE_HEIGHT>
       --coverage-variant-color <COVERAGE_VARIANT_COLOR>  [possible values: nucleotide, frequency]
       --read-percentages-viz <READ_PERCENTAGES_VIZ>      [possible values: sankey, pie]
       --paired <PAIRED>                                  [possible values: true, false]
+      --cluster-option <CLUSTER_OPTION>                  [possible values: clustermap, tree]
   -h, --help                                             Print help
   -V, --version                                          Print version
 ```
@@ -96,6 +104,7 @@ Valid top-level sections are:
 - `constants`
 - `coverage_options`
 - `percent_options`
+- `cluster_options`
 
 Example:
 
@@ -121,12 +130,17 @@ min_aq = 24
 min_f = 0.008
 min_tcc = 100
 min_conf = 0.80
+tree_height = 0.78
 
 [coverage_options]
 variant_color = "nucleotide"
 
 [percent_options]
 viz_option = "pie"
+paired = true
+
+[cluster_options]
+cluster_option = "clustermap"
 ```
 
 ## Input Files
@@ -162,4 +176,6 @@ It also writes:
 ## Notes
 
 - CLI flags are overrides, not replacements for the config model.
+- `--paired` only affects `READ_PERCENTAGES.svg`.
+- `tree_height` and `cluster_option` affect `{target}-EXPENRD.svg`.
 - The repository also includes `original_r_plots/` for reference outputs and `test_tables/` plus `test_matrices/` for local testing.

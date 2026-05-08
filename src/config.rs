@@ -154,7 +154,7 @@ pub enum PercentVizOption {
 #[serde(rename_all = "snake_case")]
 pub enum ClusterOption {
     Clustermap,
-    Heatmap,
+    Tree,
 }
 
 #[derive(Debug, Deserialize)]

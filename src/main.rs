@@ -105,7 +105,7 @@ fn main() -> Result<()> {
                 match cfg.plot_specific.cluster_config.cluster_option {
                     ClusterOption::Clustermap => plot_clustermap(sqm, &cfg, target)
                         .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
-                    ClusterOption::Heatmap => plot_heat_phylo(sqm, &cfg, target)
+                    ClusterOption::Tree => plot_heat_phylo(sqm, &cfg, target)
                         .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
                 }
             }

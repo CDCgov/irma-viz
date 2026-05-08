@@ -32,4 +32,4 @@ viz_option = "pie" # either "sankey" or "pie"
 paired = true
 
 [cluster_options]
-cluster_option = "clustermap" # either "clustermap" or "heatmap"
+cluster_option = "clustermap" # either "clustermap" or "tree"
