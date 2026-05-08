@@ -49,8 +49,13 @@ pub fn plot_clustermap(data: SquareMatrix, cfg: &Config, target: &str) -> Result
 }
 
 pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result<()> {
+    let tree_height = cfg.constants.tree_height;
+    let line_placement = 1.0 - tree_height * 0.93;
+
     let (dendrogram, leaf_order) = kuva_dendro(&data);
-    let dendro_layout = Layout::auto_from_plots(&dendrogram).with_title("Variant site clusters");
+    let dendro_layout = Layout::auto_from_plots(&dendrogram)
+        .with_title("Variant site clusters")
+        .with_reference_line(ReferenceLine::vertical(line_placement));
 
     let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
     let heat_layout = Layout::auto_from_plots(&heatmap)

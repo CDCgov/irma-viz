@@ -27,7 +27,7 @@ pub struct Args {
     pub enabled_plots: PlotToggleArgs,
     /// Constants for heuristic plot
     #[command(flatten)]
-    pub heuristics_args: ConstantsArgs,
+    pub constants_args: ConstantsArgs,
     /// Plot specific args
     #[command(flatten)]
     pub plot_specific_args: PlotSpecificArgs,
@@ -40,7 +40,7 @@ pub struct Config {
     pub input: InputConfig,
     pub output: OutputConfig,
     pub plot_toggles: PlotToggles,
-    pub constants: HeuristicsConfig,
+    pub constants: ConstantsConfig,
 
     #[serde(flatten)]
     pub plot_specific: PlotSpecificConfig,
@@ -96,14 +96,17 @@ pub struct ConstantsArgs {
     pub min_tcc: Option<f64>,
     #[arg(long)]
     pub min_conf: Option<f64>,
+    #[arg(long)]
+    pub tree_height: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct HeuristicsConfig {
+pub struct ConstantsConfig {
     pub min_aq: f64,
     pub min_f: f64,
     pub min_tcc: f64,
     pub min_conf: f64,
+    pub tree_height: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,10 +215,10 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     );
 
     // heuristics constants
-    merge(&mut cfg.constants.min_aq, args.heuristics_args.min_aq);
-    merge(&mut cfg.constants.min_f, args.heuristics_args.min_f);
-    merge(&mut cfg.constants.min_conf, args.heuristics_args.min_conf);
-    merge(&mut cfg.constants.min_tcc, args.heuristics_args.min_tcc);
+    merge(&mut cfg.constants.min_aq, args.constants_args.min_aq);
+    merge(&mut cfg.constants.min_f, args.constants_args.min_f);
+    merge(&mut cfg.constants.min_conf, args.constants_args.min_conf);
+    merge(&mut cfg.constants.min_tcc, args.constants_args.min_tcc);
 
     // plot-specific
     merge(
