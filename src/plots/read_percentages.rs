@@ -59,7 +59,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     if vals.is_empty() {
         return Err(anyhow!("Empty Totals pie chart in READ_PERCENTAGES"));
     }
-    let (legend_entries, total_pie) = kuva_pie(&vals, &legend_labels, &pal);
+    let (legend_entries, total_pie) = kuva_pie(vals, &legend_labels, &pal);
 
     let total_pie = vec![total_pie.with_legend("").with_percent().into()];
     let total_layout = Layout::auto_from_plots(&total_pie)
@@ -102,7 +102,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     if vals.is_empty() {
         return Err(anyhow!("Empty Pass QC pie chart in READ_PERCENTAGES"));
     }
-    let (legend_entries, passed_qc_pie) = kuva_pie(&vals, &legend_labels, &pal);
+    let (legend_entries, passed_qc_pie) = kuva_pie(vals, &legend_labels, &pal);
 
     let passed_qc_pie = vec![
         passed_qc_pie
@@ -114,11 +114,11 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let passed_qc_layout = Layout::auto_from_plots(&passed_qc_pie)
         .with_title("2. Percentages of all read patterns passing QC")
         .with_legend_entries(legend_entries)
-        .with_legend_position(kuva::plot::LegendPosition::OutsideRightBottom);
+        .with_legend_position(kuva::plot::LegendPosition::OutsideRightTop);
 
     // -------------------- Matches --------------------------------------------
 
-    let (targets, vals): (Vec<_>, Vec<_>) = {
+    let (targets, mut vals): (Vec<_>, Vec<_>) = {
         let mut pairs = read_counts
             .map
             .keys()
@@ -131,10 +131,10 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
         pairs.into_iter().unzip()
     };
-
+    vals.reverse();
     let total = vals.iter().sum::<f64>();
     if total == 0.0 {
-        return Err(anyhow!("Empty Matches pie chart in READ_PERCENTAGES"))
+        return Err(anyhow!("Empty Matches pie chart in READ_PERCENTAGES"));
     }
     let mut slice_labels = Vec::with_capacity(vals.len());
     for (&val, target) in vals.iter().zip(targets) {
@@ -151,7 +151,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     let mut match_pie = PiePlot::new();
     for (idx, (&val, slice_label)) in vals.iter().zip(slice_labels).enumerate() {
-        match_pie = match_pie.with_slice(slice_label, val, &pal[idx]);
+        match_pie = match_pie.with_slice(slice_label, val, &pal[vals.len() - 1 - idx]);
     }
 
     let match_pie = vec![
@@ -161,13 +161,15 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
-    let match_layout = Layout::auto_from_plots(&match_pie).with_title({
-        if paired {
-            "3. Percentages of assembled, merged-pair reads"
-        } else {
-            "3. Percentages of assembled reads"
-        }
-    });
+    let match_layout = Layout::auto_from_plots(&match_pie)
+        .with_title({
+            if paired {
+                "3. Percentages of assembled, merged-pair reads"
+            } else {
+                "3. Percentages of assembled reads"
+            }
+        })
+        .with_title_wrap(28);
 
     // --------------------- Text Box -----------------
     let text_box = TextPlot::new()
@@ -195,14 +197,19 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     render_multiplot(&scene, cfg.output.path.clone(), filename)
 }
 
-fn kuva_pie(vals: &[f64], legend_labels: &[&str], pal: &Palette) -> (Vec<LegendEntry>, PiePlot) {
-    let slice_labels = make_slice_labels(vals);
+fn kuva_pie(
+    mut vals: Vec<f64>,
+    legend_labels: &[&str],
+    pal: &Palette,
+) -> (Vec<LegendEntry>, PiePlot) {
+    vals.reverse();
+    let slice_labels = make_slice_labels(&vals);
     let mut legend_entries = Vec::with_capacity(legend_labels.len());
     let mut pie = PiePlot::new();
     for (idx, ((&val, slice_label), &legend_label)) in
         vals.iter().zip(slice_labels).zip(legend_labels).enumerate()
     {
-        pie = pie.with_slice(slice_label, val, &pal[idx]);
+        pie = pie.with_slice(slice_label, val, &pal[vals.len() - 1 - idx]);
         legend_entries.push(LegendEntry {
             label: legend_label.into(),
             color: pal[idx].to_string(),
