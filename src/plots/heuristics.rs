@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 use kuva::{plot::Histogram, prelude::*};
 
 const NUM_BINS: usize = 50; // from IRMA
+const SAMPLES: usize = 1000;
 
 pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
     if data.is_empty() {
@@ -29,16 +30,9 @@ pub fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
 }
 
 pub fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {
-    const SAMPLES: usize = 1000;
     let bw = kuva::silverman_bandwidth(data);
     let n = data.len() as f64;
     let norm = 1.0 / (n * bw * (2.0 * std::f64::consts::PI).sqrt());
-
-    let data = &data
-        .iter()
-        .cloned()
-        .filter(|&x| x >= x_lo && x <= x_hi)
-        .collect::<Vec<_>>();
 
     let raw = { kuva::simple_kde(data, bw, SAMPLES) };
 
@@ -124,7 +118,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .with_x_axis_min(0.0)
         .with_reference_line(ReferenceLine::vertical(min_tcc))
         .with_show_grid(false)
-        .with_title("Histogram of coverage");
+        .with_title("Histogram of coverage (Depth <= 20% Quantile)");
 
     // Machine error confidence histogram
     let confidence_values = all_alleles.confidence_not_mac_errs;
