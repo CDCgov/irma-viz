@@ -75,7 +75,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .with_x_axis_max(average_qualities.max)
         .with_y_axis_min(min_y - min_y * 0.05)
         .with_y_axis_max(max_y + max_y * 0.05)
-        .with_reference_line(ReferenceLine::vertical(min_aq))
+        .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
         .with_show_grid(false);
 
     // Limited x range average allele quality density
@@ -98,7 +98,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .with_x_axis_max(0.1)
         .with_y_axis_min(min_y - min_y * 0.05)
         .with_y_axis_max(max_y + max_y * 0.05)
-        .with_reference_line(ReferenceLine::vertical(min_f))
+        .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
         .with_show_grid(false);
 
     // Limited x range observed frequency density
@@ -116,7 +116,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .with_context(|| "coverage histogram subplot")?;
     let cov_hist_layout = Layout::auto_from_plots(&coverage_histogram)
         .with_x_axis_min(0.0)
-        .with_reference_line(ReferenceLine::vertical(min_tcc))
+        .with_reference_line(ReferenceLine::vertical(min_tcc).with_dasharray("none"))
         .with_show_grid(false)
         .with_title("Histogram of coverage (Depth <= 20% Quantile)");
 
@@ -125,7 +125,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
     let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
         .with_context(|| "confidence histogram subplot")?;
     let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
-        .with_reference_line(ReferenceLine::vertical(min_conf))
+        .with_reference_line(ReferenceLine::vertical(min_conf).with_dasharray("none"))
         .with_show_grid(false)
         .with_title("Histogram of confidence of not machine error, non-zero");
 
