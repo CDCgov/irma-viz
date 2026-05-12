@@ -156,12 +156,12 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     let match_pie = vec![
         match_pie
-            //.with_legend("")
             .with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
     let match_layout = Layout::auto_from_plots(&match_pie)
+        .with_scale(1.0)
         .with_title({
             if paired {
                 "3. Percentages of assembled, merged-pair reads"
@@ -190,6 +190,8 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let filename = "READ_PERCENTAGES.svg";
 
     let scene = Figure::new(2, 2)
+        .with_padding(40.0)
+        .with_spacing(30.0)
         .with_plots(plots)
         .with_layouts(layouts)
         .render();
