@@ -55,18 +55,25 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
     let (dendrogram, leaf_order) = kuva_dendro(&data);
     let dendro_layout = Layout::auto_from_plots(&dendrogram)
         .with_title("Variant site clusters")
-        .with_reference_line(ReferenceLine::vertical(line_placement));
+        .with_reference_line(ReferenceLine::vertical(line_placement))
+        .with_scale(1.7);
 
     let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
     let heat_layout = Layout::auto_from_plots(&heatmap)
         .with_title(format!("{target}-EXPENRD.sqm"))
+        .with_title_size(25)
         .with_x_categories(layout_cats.clone().into_iter().rev().collect::<Vec<_>>())
-        .with_y_categories(layout_cats);
+        .with_y_categories(layout_cats)
+        .with_axis_line_width(0.0)
+        .with_tick_size(20)
+        .with_tick_width(0.0);
 
     let filename = format!("{target}-EXPENRD.svg");
-    let scene = Figure::new(1, 2)
+    let scene = Figure::new(2, 3)
+        .with_structure(vec![vec![0, 3], vec![1, 2, 4, 5]])
         .with_plots(vec![dendrogram, heatmap])
         .with_layouts(vec![dendro_layout, heat_layout])
+        .with_spacing(0.0)
         .render();
 
     render_multiplot(&scene, cfg.output.path.clone(), &filename)
@@ -75,11 +82,16 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
     let labels = data.labels.iter().map(|l| l.as_str()).collect::<Vec<_>>();
     let dist = &data.matrix;
+    let blank = vec![""; labels.len()];
 
+    // This tree is made to grab the leaf labels order to pass to the heatmap
     let tree = PhyloTree::from_distance_matrix(&labels, dist).with_phylogram();
     let leaf_order = tree.leaf_labels_top_to_bottom();
 
-    (vec![tree.into()], leaf_order)
+    // This tree with blank leaf labels is what is actually plotted
+    let blank_tree = PhyloTree::from_distance_matrix(&blank, dist).with_phylogram();
+
+    (vec![blank_tree.into()], leaf_order)
 }
 
 fn kuva_heatmap(data: &SquareMatrix, leaf_order: Vec<String>) -> (Vec<Plot>, Vec<String>) {
