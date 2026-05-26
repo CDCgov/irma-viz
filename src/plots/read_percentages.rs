@@ -118,7 +118,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     // -------------------- Matches --------------------------------------------
 
-    let (targets, mut vals): (Vec<_>, Vec<_>) = {
+    let (targets, vals): (Vec<_>, Vec<_>) = {
         let mut pairs = read_counts
             .map
             .keys()
@@ -129,9 +129,8 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
             .collect::<Vec<_>>();
 
         pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
-        pairs.into_iter().unzip()
+        pairs.into_iter().rev().unzip()
     };
-    vals.reverse();
     let total = vals.iter().sum::<f64>();
     if total == 0.0 {
         return Err(anyhow!("Empty Matches pie chart in READ_PERCENTAGES"));
