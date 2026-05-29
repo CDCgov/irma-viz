@@ -12,10 +12,10 @@ pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
     let colormap = ColorMap::Custom(Arc::new(|t: f64| {
         let t = t.clamp(0.0, 1.0);
 
-        // light grey: #7b7b7b
-        let r1 = 0x7b as f64;
-        let g1 = 0x7b as f64;
-        let b1 = 0x7b as f64;
+        // light grey: #f3f3f3
+        let r1 = 0xf3 as f64;
+        let g1 = 0xf3 as f64;
+        let b1 = 0xf3 as f64;
 
         // bright red: #ff0000
         let r0 = 0xff as f64;
@@ -55,7 +55,10 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
     let (dendrogram, leaf_order) = kuva_dendro(&data);
     let dendro_layout = Layout::auto_from_plots(&dendrogram)
         .with_title("Variant site clusters")
-        .with_reference_line(ReferenceLine::vertical(line_placement))
+        .with_reference_line(
+            ReferenceLine::vertical(line_placement)
+                .with_label(format!("cutoff = {tree_height:.2}")),
+        )
         .with_scale(1.7);
 
     let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
@@ -90,7 +93,6 @@ fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
 
     // This tree with blank leaf labels is what is actually plotted
     let blank_tree = PhyloTree::from_distance_matrix(&blank, dist).with_phylogram();
-
     (vec![blank_tree.into()], leaf_order)
 }
 
@@ -100,10 +102,10 @@ fn kuva_heatmap(data: &SquareMatrix, leaf_order: Vec<String>) -> (Vec<Plot>, Vec
     let colormap = ColorMap::Custom(Arc::new(|t: f64| {
         let t = t.clamp(0.0, 1.0);
 
-        // light grey: #7b7b7b
-        let r1 = 0x7b as f64;
-        let g1 = 0x7b as f64;
-        let b1 = 0x7b as f64;
+        // light grey: #f3f3f3
+        let r1 = 0xf3 as f64;
+        let g1 = 0xf3 as f64;
+        let b1 = 0xf3 as f64;
 
         // bright red: #ff0000
         let r0 = 0xff as f64;
