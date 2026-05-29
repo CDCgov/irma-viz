@@ -61,7 +61,6 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     }
     let (legend_entries, total_pie) = kuva_pie(vals, &legend_labels, &pal);
 
-    //let total_pie = vec![total_pie.with_legend("").with_percent().into()];
     let total_pie = vec![total_pie.with_legend("").into()];
     let total_layout = Layout::auto_from_plots(&total_pie)
         .with_title({
@@ -108,7 +107,6 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let passed_qc_pie = vec![
         passed_qc_pie
             .with_legend("")
-            //.with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
@@ -157,7 +155,6 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     let match_pie = vec![
         match_pie
-            //.with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
