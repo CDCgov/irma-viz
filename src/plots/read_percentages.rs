@@ -61,7 +61,8 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     }
     let (legend_entries, total_pie) = kuva_pie(vals, &legend_labels, &pal);
 
-    let total_pie = vec![total_pie.with_legend("").with_percent().into()];
+    //let total_pie = vec![total_pie.with_legend("").with_percent().into()];
+    let total_pie = vec![total_pie.with_legend("").into()];
     let total_layout = Layout::auto_from_plots(&total_pie)
         .with_title({
             if paired {
@@ -107,7 +108,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     let passed_qc_pie = vec![
         passed_qc_pie
             .with_legend("")
-            .with_percent()
+            //.with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
@@ -137,14 +138,15 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
     }
     let mut slice_labels = Vec::with_capacity(vals.len());
     for (&val, target) in vals.iter().zip(targets) {
-        if val / total < 0.02 {
+        let perc = val / total * 100.00;
+        if perc < 2.0 {
             slice_labels.push(target.to_string())
         } else if val >= 1_000_000.0 {
-            slice_labels.push(format!("{target}: {:.1}M", val / 1_000_000.0))
+            slice_labels.push(format!("{perc:.1}% ({:.1}M) {target}", val / 1_000_000.0))
         } else if val >= 1_000.0 {
-            slice_labels.push(format!("{target}: {:.1}k", val / 1_000.0))
+            slice_labels.push(format!("{perc:.1}% ({:.1}k) {target}", val / 1_000.0))
         } else {
-            slice_labels.push(format!("{target}: {val}"))
+            slice_labels.push(format!("{perc:.1}% ({val}) {target}"))
         }
     }
 
@@ -155,7 +157,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
 
     let match_pie = vec![
         match_pie
-            .with_percent()
+            //.with_percent()
             .with_label_position(kuva::plot::PieLabelPosition::Outside)
             .into(),
     ];
@@ -223,13 +225,15 @@ fn kuva_pie(
 
 fn make_slice_labels(vals: &[f64]) -> Vec<String> {
     let mut slice_labels = Vec::with_capacity(vals.len());
+    let total = vals.iter().copied().sum::<f64>();
     for &val in vals {
+        let perc = val / total * 100.0;
         if val >= 1_000_000.0 {
-            slice_labels.push(format!("{:.1}M", val / 1_000_000.0))
+            slice_labels.push(format!("{perc:.1}% ({:.1}M)", val / 1_000_000.0))
         } else if val >= 1_000.0 {
-            slice_labels.push(format!("{:.1}k", val / 1_000.0))
+            slice_labels.push(format!("{perc:.1}% ({:.1}k)", val / 1_000.0))
         } else {
-            slice_labels.push(format!("{val}"))
+            slice_labels.push(format!("{perc:.1}% ({val})"))
         }
     }
     slice_labels
