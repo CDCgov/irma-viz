@@ -70,7 +70,8 @@ pub fn plot_coverage(
     if let Some(value) = expected_error
         && show_bar
     {
-        coverage_bar_plot = coverage_bar_plot.with_colored_bar("exp. err.", value, "black");
+        coverage_bar_plot =
+            coverage_bar_plot.with_colored_bar(format!("exp. err. = {value:.2E}"), value, "black");
     }
 
     for (index, (((&position, &consensus_allele), &minority_allele), &minority_frequency)) in
@@ -102,7 +103,7 @@ pub fn plot_coverage(
         );
 
         if position <= coverage.coverage.len() && position != 0 {
-            let (min_y, _)= coverage_layout.y_range;
+            let (min_y, _) = coverage_layout.y_range;
             // Check if this label would overlap with any previous labels
             // TODO: Try to break this by going off the bottom axis; test
             let mut annotation_y_pos =
@@ -148,8 +149,10 @@ pub fn plot_coverage(
                     .with_color("#ffffff"),
             );
         }
+        bar_layout = bar_layout.with_tick_format(TickFormat::Fixed(3));
 
-        let scene = Figure::new(2, 1)
+        let scene = Figure::new(2, 2)
+            .with_structure(vec![vec![0, 1], vec![2, 3]])
             .with_plots(vec![coverage_plot, coverage_bar])
             .with_layouts(vec![coverage_layout, bar_layout])
             .render();
