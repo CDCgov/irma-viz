@@ -251,6 +251,10 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     merge(&mut cfg.constants.min_f, args.constants_args.min_f);
     merge(&mut cfg.constants.min_conf, args.constants_args.min_conf);
     merge(&mut cfg.constants.min_tcc, args.constants_args.min_tcc);
+    merge(
+        &mut cfg.constants.tree_height,
+        args.constants_args.tree_height,
+    );
 
     // plot-specific
     merge(
@@ -562,10 +566,14 @@ fn discover_candidate_targets(dir: &Path, suffixes: &[&str]) -> Result<BTreeSet<
         };
 
         for suffix in suffixes {
-            if let Some(target) = file_name.strip_suffix(suffix)
-                && !target.is_empty()
-            {
-                targets.insert(target.to_owned());
+            if let Some(target) = file_name.strip_suffix(suffix) {
+                if is_valid_target_name(target) {
+                    targets.insert(target.to_owned());
+                } else {
+                    eprintln!(
+                        "Warning: skipping target derived from {file_name:?}: invalid target name {target:?}"
+                    );
+                }
                 break;
             }
         }
@@ -613,4 +621,12 @@ fn validate_target_files(target: &str, required_files: Vec<PathBuf>, plot_type: 
         );
     }
     false
+}
+
+fn is_valid_target_name(target: &str) -> bool {
+    !target.is_empty()
+        && target.len() <= 128
+        && target
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
 }

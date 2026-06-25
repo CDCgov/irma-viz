@@ -35,13 +35,6 @@ fn main() -> Result<()> {
     let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
     let output_path = cfg.output_path()?;
 
-    let plot_targets = resolve_targets(&cfg)?;
-    plot_targets.check_missing_targets(&cfg.plot_toggles);
-
-    let io_args = cfg.io_args()?;
-    let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
-    let output_path = cfg.output_path()?;
-
     // create output directory
     if let output_dir = std::path::Path::new(&output_path)
         && !output_dir.as_os_str().is_empty()
