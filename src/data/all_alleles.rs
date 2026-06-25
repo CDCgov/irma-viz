@@ -4,7 +4,8 @@ use std::path::Path;
 
 const TOTAL_PROB: f64 = 0.2;
 
-/// TODO: Docs
+/// A deserialized row from an IRMA `*-allAlleles.txt` table.
+/// Only the columns needed for the heuristics plot are represented here.
 #[derive(serde::Deserialize)]
 struct AllAllelesLine {
     #[serde(rename = "Total")]
@@ -16,19 +17,26 @@ struct AllAllelesLine {
     #[serde(rename = "ConfidenceNotMacErr", deserialize_with = "option_float")]
     confidence_not_mac_err: Option<f64>,
 }
-/// TODO: Docs
+/// Parsed data from an IRMA `*-allAlleles.txt` table for one target.
+/// The totals are trimmed to the low-coverage quantile used by the coverage
+/// histogram, while frequencies, qualities, and confidence values are retained for their plots.
 pub struct AllAlleles {
-    pub totals: Vec<f64>,
+    pub totals: Totals,
     pub frequencies: Vec<f64>,
     pub average_qualities: AverageQualities,
     pub confidence_not_mac_errs: Vec<f64>,
 }
 
 impl AllAlleles {
-    /// TODO: Docs
+    /// Reads an all-alleles TSV file and extracts the columns used by the
+    /// heuristics figure. Missing quality/confidence values are skipped, zero
+    /// confidence values are excluded, and totals are filtered to the configured quantile.
     pub fn import_from_file(filename: &Path) -> Result<Self> {
         let mut all_alleles_data = AllAlleles {
-            totals: Vec::new(),
+            totals: Totals {
+                data: Vec::new(),
+                upper_quantile: 0.0,
+            },
             frequencies: Vec::new(),
             average_qualities: AverageQualities {
                 data: Vec::new(),
@@ -46,7 +54,7 @@ impl AllAlleles {
         for line in all_alleles_reader.deserialize() {
             let line: AllAllelesLine = line?;
 
-            all_alleles_data.totals.push(line.total);
+            all_alleles_data.totals.data.push(line.total);
 
             all_alleles_data.frequencies.push(line.frequency);
 
@@ -67,17 +75,20 @@ impl AllAlleles {
             }
         }
 
-        let mx = quantile(&all_alleles_data.totals, TOTAL_PROB).with_context(|| {
-            format!(
-                "Error calculating totals quantile from {}",
-                filename.display(),
-            )
-        })?;
-        all_alleles_data.totals = all_alleles_data
+        let upper_quantile =
+            quantile(&all_alleles_data.totals.data, TOTAL_PROB).with_context(|| {
+                format!(
+                    "Error calculating totals quantile from {}",
+                    filename.display(),
+                )
+            })?;
+        all_alleles_data.totals.data = all_alleles_data
             .totals
+            .data
             .into_iter()
-            .filter(|x| *x < mx)
+            .filter(|x| *x <= upper_quantile)
             .collect::<Vec<_>>();
+        all_alleles_data.totals.upper_quantile = upper_quantile;
 
         Ok(all_alleles_data)
     }
@@ -87,6 +98,11 @@ pub struct AverageQualities {
     pub data: Vec<f64>,
     pub min: f64,
     pub max: f64,
+}
+
+pub struct Totals {
+    pub data: Vec<f64>,
+    pub upper_quantile: f64,
 }
 
 /// The quantile of observations `x` at probability `p`. Assumes all
