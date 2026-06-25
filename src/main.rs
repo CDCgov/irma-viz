@@ -1,7 +1,10 @@
 //! TODO: Docs
 
 use crate::{
-    config::{Args, ClusterOption, PercentVizOption, apply_cli_overrides, load_config},
+    config::{
+        Args, ClusterOption, PercentVizOption, apply_cli_overrides, get_directory_paths,
+        load_config, resolve_targets,
+    },
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     plots::{
         clustermap::{plot_clustermap, plot_heat_phylo},
@@ -24,18 +27,21 @@ fn main() -> Result<()> {
         load_config(&cli.config).with_context(|| format!("Loading config from {}", cli.config))?;
 
     let cfg = apply_cli_overrides(cfg, &cli);
+    let targets = resolve_targets(&cfg)?;
+    let io_args = cfg.io_args()?;
+    let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
+    let output_path = cfg.output_path()?;
 
     // create output directory
-    if let output_dir = std::path::Path::new(&cfg.output.path)
+    if let output_dir = std::path::Path::new(&output_path)
         && !output_dir.as_os_str().is_empty()
     {
-        fs::create_dir_all(output_dir)
-            .with_context(|| format!("Creating output dir {}", output_dir.display()))?;
+        fs::create_dir_all(output_dir)?;
     }
 
     // Read Counts
     if cfg.plot_toggles.read_percentages {
-        let read_counts_path = cfg.input.table_path.join("READ_COUNTS.txt");
+        let read_counts_path = table_path.join("READ_COUNTS.txt");
 
         match cfg.plot_specific.read_percent.viz_option {
             PercentVizOption::Sankey => {
@@ -43,7 +49,7 @@ fn main() -> Result<()> {
                     SankeyVec::import_from_file(&read_counts_path).with_context(|| {
                         format!(
                             "Failed to import Read Counts data from: \'{}\'",
-                            &read_counts_path.display()
+                            read_counts_path.display()
                         )
                     })?;
 
@@ -55,7 +61,7 @@ fn main() -> Result<()> {
                     ReadCounts::import_from_file(&read_counts_path).with_context(|| {
                         format!(
                             "Failed to import Read Counts data from: \'{}\'",
-                            &read_counts_path.display()
+                            read_counts_path.display()
                         )
                     })?;
 
@@ -65,18 +71,15 @@ fn main() -> Result<()> {
         }
     }
 
-    for target in &cfg.targets.list {
+    for target in &targets {
         // heuristics multi-plot
         if cfg.plot_toggles.heuristics {
-            let all_alleles_path = cfg
-                .input
-                .table_path
-                .join(format!("{target}-allAlleles.txt"));
+            let all_alleles_path = table_path.join(format!("{target}-allAlleles.txt"));
             let allele_data =
                 AllAlleles::import_from_file(&all_alleles_path).with_context(|| {
                     format!(
                         "Failed to import All Alleles data from \'{}\'",
-                        &all_alleles_path.display()
+                        all_alleles_path.display()
                     )
                 })?;
 
@@ -85,21 +88,21 @@ fn main() -> Result<()> {
         }
 
         if cfg.plot_toggles.clustermap || cfg.plot_toggles.coverage {
-            let variants_path = cfg.input.table_path.join(format!("{target}-variants.txt"));
+            let variants_path = table_path.join(format!("{target}-variants.txt"));
             let variants = AllVariants::import_from_file(&variants_path).with_context(|| {
                 format!(
                     "Failed to import Variants data from \'{}\'",
-                    &variants_path.display()
+                    variants_path.display()
                 )
             })?;
 
             // clustermap
             if cfg.plot_toggles.clustermap && variants.positions.len() > 1 {
-                let sqm_path = cfg.input.matrix_path.join(format!("{target}-EXPENRD.sqm"));
+                let sqm_path = matrix_path.join(format!("{target}-EXPENRD.sqm"));
                 let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
                     format!(
                         "Failed to import Square Matrix data from \'{}\'",
-                        &sqm_path.display()
+                        sqm_path.display()
                     )
                 })?;
                 match cfg.plot_specific.cluster_config.cluster_option {
@@ -111,23 +114,20 @@ fn main() -> Result<()> {
             }
 
             if cfg.plot_toggles.coverage {
-                let coverage_path = cfg.input.table_path.join(format!("{target}-coverage.txt"));
+                let coverage_path = table_path.join(format!("{target}-coverage.txt"));
                 let coverage = Coverage::import_from_file(&coverage_path).with_context(|| {
                     format!(
                         "Failed to import Coverage data from \'{}\'",
-                        &coverage_path.display()
+                        coverage_path.display()
                     )
                 })?;
 
-                let pairing_stats_path = cfg
-                    .input
-                    .table_path
-                    .join(format!("{target}-pairingStats.txt"));
+                let pairing_stats_path = table_path.join(format!("{target}-pairingStats.txt"));
                 let pairing_stats = PairingStats::import_from_file(&pairing_stats_path)
                     .with_context(|| {
                         format!(
                             "Failed to import Pairing Stats data from \'{}\'",
-                            &pairing_stats_path.display()
+                            pairing_stats_path.display()
                         )
                     })?;
 

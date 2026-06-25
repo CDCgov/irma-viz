@@ -1,19 +1,8 @@
-# TODO: Docs
-[targets]
-list = ["A_HA_H3","A_MP","A_NA_N2","A_NP","A_NS","A_PA","A_PB1","A_PB2"]
-
 [plot_toggles]
 read_percentages = true
 clustermap = true
 heuristics = true
 coverage = true
-
-[input]
-table_path = "test_tables/"
-matrix_path = "test_matrices/"
-
-[output]
-path = "out/"
 
 [constants]
 # These are constants that affect the ranges of the heuristic plots. They are overridden in the configs for each IRMA module

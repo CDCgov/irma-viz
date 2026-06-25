@@ -16,7 +16,7 @@ pub fn render_plot(plot: (&str, (Vec<Plot>, Layout)), outpath: impl AsRef<Path>)
     let filepath = outpath.as_ref().join(filename);
     let svg = render_to_svg(plots, layout);
     std::fs::write(&filepath, svg)
-        .with_context(|| format!("Failed to write output file \'{}\'", &filepath.display()))?;
+        .with_context(|| format!("Failed to write output file \'{}\'", filepath.display()))?;
 
     Ok(())
 }
@@ -26,7 +26,7 @@ pub fn render_multiplot(scene: &Scene, outpath: impl AsRef<Path>, filename: &str
     let svg = SvgBackend.render_scene(scene);
 
     std::fs::write(&filepath, svg)
-        .with_context(|| format!("Failed to write output file \'{}\'", &filepath.display()))?;
+        .with_context(|| format!("Failed to write output file \'{}\'", filepath.display()))?;
 
     Ok(())
 }

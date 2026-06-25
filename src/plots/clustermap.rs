@@ -45,7 +45,7 @@ pub fn plot_clustermap(data: SquareMatrix, cfg: &Config, target: &str) -> Result
         .with_title(format!("Variant site clusters, {target}-EXPENRD.sqm"));
 
     let filename = format!("{target}-EXPENRD.svg");
-    render_plot((filename.as_str(), (plot, layout)), cfg.output.path.clone())
+    render_plot((filename.as_str(), (plot, layout)), cfg.output_path()?)
 }
 
 pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result<()> {
@@ -79,7 +79,7 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
         .with_spacing(0.0)
         .render();
 
-    render_multiplot(&scene, cfg.output.path.clone(), &filename)
+    render_multiplot(&scene, cfg.output_path()?, &filename)
 }
 
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {

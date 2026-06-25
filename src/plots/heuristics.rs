@@ -150,5 +150,5 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .render();
 
     let filename = format!("{target}-heuristics.svg");
-    render_multiplot(&scene, cfg.output.path.clone(), filename.as_str())
+    render_multiplot(&scene, cfg.output_path()?, filename.as_str())
 }

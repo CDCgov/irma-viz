@@ -13,10 +13,7 @@ use kuva::{
 pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
     let (plot, layout) = kuva_sankey(sankey_vec);
 
-    render_plot(
-        ("READ_PERCENTAGES.svg", (plot, layout)),
-        cfg.output.path.clone(),
-    )
+    render_plot(("READ_PERCENTAGES.svg", (plot, layout)), cfg.output_path()?)
 }
 
 fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
@@ -194,7 +191,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         .with_layouts(layouts)
         .render();
 
-    render_multiplot(&scene, cfg.output.path.clone(), filename)
+    render_multiplot(&scene, cfg.output_path()?, filename)
 }
 
 fn kuva_pie(

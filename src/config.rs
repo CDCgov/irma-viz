@@ -1,27 +1,21 @@
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use serde::Deserialize;
-use std::{fs, path::PathBuf};
+use std::{
+    collections::BTreeSet,
+    fs,
+    path::{Path, PathBuf},
+};
 
 /// These are for overriding settings from the config.toml
 #[derive(Debug, Parser)]
 #[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
 pub struct Args {
+    #[command(flatten)]
+    pub io_args: IOArgs,
     /// Path to config TOML
     #[arg(long, default_value = "config.toml")]
     pub config: String,
-    /// Target organisms to plot
-    #[arg(short, long)]
-    pub targets: Vec<String>,
-    /// Path where the input data tables are held
-    #[arg(long)]
-    pub table_path: Option<PathBuf>,
-    /// Path where the input matrices are held
-    #[arg(long)]
-    pub matrix_path: Option<PathBuf>,
-    /// Output SVG path override
-    #[arg(long)]
-    pub output: Option<PathBuf>,
     /// Which figures to plot
     #[command(flatten)]
     pub enabled_plots: PlotToggleArgs,
@@ -33,33 +27,29 @@ pub struct Args {
     pub plot_specific_args: PlotSpecificArgs,
 }
 
+#[derive(Debug, Parser, Clone)]
+pub struct IOArgs {
+    /// Path to input directory that contains `tables/` and `matrices/`
+    #[arg(long, short = 'i')]
+    pub input_root: PathBuf,
+    /// Destination directory for output figures. If not specified, defaults to
+    /// `input_root/figures/`
+    #[arg(long, short = 'o')]
+    pub output_path: Option<PathBuf>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub targets: Targets,
-    pub input: InputConfig,
-    pub output: OutputConfig,
+    // this is skipped for deserialization because we don't actually expect it
+    // in the toml, but we do want to keep it in the Config object
+    #[serde(skip)]
+    pub io_args: Option<IOArgs>,
     pub plot_toggles: PlotToggles,
     pub constants: ConstantsConfig,
 
     #[serde(flatten)]
     pub plot_specific: PlotSpecificConfig,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Targets {
-    pub list: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct InputConfig {
-    pub table_path: PathBuf,
-    pub matrix_path: PathBuf,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OutputConfig {
-    pub path: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
@@ -181,23 +171,7 @@ fn merge<T>(target: &mut T, override_val: Option<T>) {
 }
 
 pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
-    // targets overrides
-    if !args.targets.is_empty() {
-        cfg.targets.list = args.targets.clone();
-    }
-
-    // input overrides
-    if let Some(table_path) = &args.table_path {
-        cfg.input.table_path = table_path.to_path_buf();
-    }
-    if let Some(matrix_path) = &args.matrix_path {
-        cfg.input.matrix_path = matrix_path.to_path_buf();
-    }
-
-    // output overrides
-    if let Some(out) = &args.output {
-        cfg.output.path = out.clone();
-    }
+    cfg.io_args = Some(args.io_args.clone());
 
     // plot overrides
     merge(
@@ -245,4 +219,97 @@ pub fn load_config(path: &str) -> Result<Config> {
     let s = fs::read_to_string(path).with_context(|| format!("Error reading \'{path}\'"))?;
     let cfg: Config = toml::from_str(&s).with_context(|| format!("Error parsing \'{path}\'"))?;
     Ok(cfg)
+}
+
+impl Config {
+    /// Convenience function for getting IO args from [Config]
+    pub fn io_args(&self) -> Result<&IOArgs> {
+        self.io_args
+            .as_ref()
+            .context("IO arguments were not attached to the runtime config")
+    }
+
+    /// Convenience function for getting output path from [Config]
+    pub fn output_path(&self) -> Result<PathBuf> {
+        let io_args = self.io_args()?;
+        Ok(io_args
+            .output_path
+            .clone()
+            .unwrap_or_else(|| io_args.input_root.join("figures")))
+    }
+}
+
+const TABLE_TARGET_SUFFIXES: &[&str] = &[
+    "-allAlleles.txt",
+    "-coverage.txt",
+    "-pairingStats.txt",
+    "-variants.txt",
+    "-insertions.txt",
+    "-deletions.txt",
+];
+const MATRIX_TARGET_SUFFIXES: &[&str] = &[
+    "-EXPENRD.sqm",
+    "-JACCARD.sqm",
+    "-MUTUALD.sqm",
+    "-NJOINTP.sqm",
+];
+
+/// takes the input root for an IRMA run and returns paths for the `tables/` and `matrices/` directories
+pub fn get_directory_paths(input_root: &Path) -> (PathBuf, PathBuf) {
+    (input_root.join("tables"), input_root.join("matrices"))
+}
+
+pub fn resolve_targets(cfg: &Config) -> Result<Vec<String>> {
+    if !(cfg.plot_toggles.heuristics || cfg.plot_toggles.coverage || cfg.plot_toggles.clustermap) {
+        return Ok(Vec::new());
+    }
+
+    let mut discovered = BTreeSet::new();
+    let io_args = cfg.io_args()?;
+    let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
+
+    discovered.extend(discover_targets_in_dir(&table_path, TABLE_TARGET_SUFFIXES)?);
+    if cfg.plot_toggles.clustermap {
+        discovered.extend(discover_targets_in_dir(
+            &matrix_path,
+            MATRIX_TARGET_SUFFIXES,
+        )?);
+    }
+
+    if discovered.is_empty()
+        && (cfg.plot_toggles.heuristics || cfg.plot_toggles.coverage || cfg.plot_toggles.clustermap)
+    {
+        return Err(anyhow::anyhow!(
+            "No targets were discovered under '{}' and '{}'",
+            table_path.display(),
+            matrix_path.display()
+        ));
+    }
+
+    Ok(discovered.into_iter().collect())
+}
+
+fn discover_targets_in_dir(dir: &Path, suffixes: &[&str]) -> Result<BTreeSet<String>> {
+    let entries = fs::read_dir(dir)
+        .with_context(|| format!("Error reading input directory '{}'", dir.display()))?;
+    let mut targets = BTreeSet::new();
+
+    for entry in entries {
+        let entry =
+            entry.with_context(|| format!("Error reading entry from '{}'", dir.display()))?;
+        let Some(file_name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+
+        for suffix in suffixes {
+            if let Some(target) = file_name.strip_suffix(suffix)
+                && !target.is_empty()
+            {
+                targets.insert(target.to_owned());
+                break;
+            }
+        }
+    }
+
+    Ok(targets)
 }

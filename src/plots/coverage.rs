@@ -157,11 +157,11 @@ pub fn plot_coverage(
             .with_layouts(vec![coverage_layout, bar_layout])
             .render();
 
-        render_multiplot(&scene, cfg.output.path.clone(), &filename)
+        render_multiplot(&scene, cfg.output_path()?, &filename)
     } else {
         render_plot(
             (&filename, (coverage_plot, coverage_layout)),
-            cfg.output.path.clone(),
+            cfg.output_path()?,
         )
     }
 }
