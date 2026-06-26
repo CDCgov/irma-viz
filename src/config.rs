@@ -398,9 +398,7 @@ fn discover_candidate_targets(dir: &Path, suffixes: &[&str]) -> Result<BTreeSet<
         };
 
         for suffix in suffixes {
-            if let Some(target) = file_name.strip_suffix(suffix)
-                && !target.is_empty()
-            {
+            if let Some(target) = file_name.strip_suffix(suffix) {
                 targets.insert(target.to_owned());
                 break;
             }
