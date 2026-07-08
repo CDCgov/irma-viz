@@ -175,6 +175,8 @@ pub enum MatrixType {
     Njointp,
 }
 
+/// Converts the struct of bools created from the config.toml into a Vec of
+/// enabled matrix types for iteration
 impl MatrixTypes {
     pub fn enabled_matrix_types(&self) -> Vec<MatrixType> {
         let mut enabled = Vec::new();
@@ -300,6 +302,7 @@ const COVERAGE_REQUIRED_TABLE_SUFFIXES: &[&str] =
     &["-variants.txt", "-coverage.txt", "-pairingStats.txt"];
 const CLUSTERMAP_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt"];
 
+/// Stores a list of targets seperately for each matrix type
 #[derive(Debug, Default)]
 pub struct ClusterTargets {
     pub expenrd: BTreeSet<String>,
@@ -313,6 +316,7 @@ impl ClusterTargets {
         self.targets_for_mut(matrix_type).insert(target);
     }
 
+    /// gets the set of targets for a given matrix type
     pub fn targets_for(&self, matrix_type: MatrixType) -> &BTreeSet<String> {
         match matrix_type {
             MatrixType::Expenrd => &self.expenrd,
@@ -322,6 +326,7 @@ impl ClusterTargets {
         }
     }
 
+    /// gets the set of targets for a given matrix type mutably
     fn targets_for_mut(&mut self, matrix_type: MatrixType) -> &mut BTreeSet<String> {
         match matrix_type {
             MatrixType::Expenrd => &mut self.expenrd,
@@ -339,6 +344,8 @@ impl ClusterTargets {
             .collect()
     }
 
+    // a big ugly way to ensure that if a matrix file exists for a certain
+    // matrix type, we warn if it doesn't exist for the other enabled matrix type(s)
     pub fn check_missing_matrix_targets(&self, matrix_types: &MatrixTypes) {
         let enabled = matrix_types.enabled_matrix_types();
         if enabled.len() < 2 {
@@ -438,6 +445,7 @@ impl PlotTargets {
     }
 }
 
+/// helper function for warning of missing files for a given target and plot type
 fn warn_missing<'a>(
     from: &'a BTreeSet<String>,
     to: &'a BTreeSet<String>,
