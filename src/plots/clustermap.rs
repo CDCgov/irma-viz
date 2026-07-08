@@ -39,16 +39,26 @@ pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
     ]
 }
 
-pub fn plot_clustermap(data: SquareMatrix, cfg: &Config, target: &str) -> Result<()> {
+pub fn plot_clustermap(
+    data: SquareMatrix,
+    cfg: &Config,
+    target: &str,
+    matrix_type: &str,
+) -> Result<()> {
     let plot = kuva_clustermap(data);
     let layout = Layout::auto_from_plots(&plot)
-        .with_title(format!("Variant site clusters, {target}-EXPENRD.sqm"));
+        .with_title(format!("Variant site clusters, {target}-{matrix_type}.sqm"));
 
-    let filename = format!("{target}-EXPENRD.svg");
+    let filename = format!("{target}-{matrix_type}.svg");
     render_plot((filename.as_str(), (plot, layout)), cfg.output_path()?)
 }
 
-pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result<()> {
+pub fn plot_heat_phylo(
+    data: SquareMatrix,
+    cfg: &Config,
+    target: &str,
+    matrix_type: &str,
+) -> Result<()> {
     let tree_height = cfg.constants.tree_height;
     let line_placement = 1.0 - tree_height * 0.93;
 
@@ -63,7 +73,7 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
 
     let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
     let heat_layout = Layout::auto_from_plots(&heatmap)
-        .with_title(format!("{target}-EXPENRD.sqm"))
+        .with_title(format!("{target}-{matrix_type}.sqm"))
         .with_title_size(25)
         .with_x_categories(layout_cats.clone().into_iter().rev().collect::<Vec<_>>())
         .with_y_categories(layout_cats)
@@ -71,7 +81,7 @@ pub fn plot_heat_phylo(data: SquareMatrix, cfg: &Config, target: &str) -> Result
         .with_tick_size(20)
         .with_tick_width(0.0);
 
-    let filename = format!("{target}-EXPENRD.svg");
+    let filename = format!("{target}-{matrix_type}.svg");
     let scene = Figure::new(2, 3)
         .with_structure(vec![vec![0, 3], vec![1, 2, 4, 5]])
         .with_plots(vec![dendrogram, heatmap])

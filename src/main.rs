@@ -103,19 +103,47 @@ fn main() -> Result<()> {
             )
         })?;
 
-        if plot_targets.clustermap.contains(&target) && variants.positions.len() > 1 {
-            let sqm_path = matrix_path.join(format!("{target}-EXPENRD.sqm"));
-            let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
-                format!(
-                    "Failed to import Square Matrix data from \'{}\'",
-                    sqm_path.display()
-                )
-            })?;
-            match cfg.plot_specific.cluster_config.cluster_option {
-                ClusterOption::Clustermap => plot_clustermap(sqm, &cfg, &target)
-                    .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
-                ClusterOption::Tree => plot_heat_phylo(sqm, &cfg, &target)
-                    .with_context(|| format!("Error plotting {target}-EXPENRD.svg"))?,
+        if variants.positions.len() > 1 {
+            for matrix_type in cfg
+                .plot_specific
+                .cluster_config
+                .matrix_types
+                .enabled_matrix_types()
+            {
+                if plot_targets
+                    .clustermap
+                    .targets_for(matrix_type)
+                    .contains(&target)
+                {
+                    let sqm_path =
+                        matrix_path.join(format!("{target}{}", matrix_type.file_suffix()));
+                    let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
+                        format!(
+                            "Failed to import Square Matrix data from \'{}\'",
+                            sqm_path.display()
+                        )
+                    })?;
+                    match cfg.plot_specific.cluster_config.cluster_option {
+                        ClusterOption::Clustermap => {
+                            plot_clustermap(sqm, &cfg, &target, matrix_type.display_name())
+                                .with_context(|| {
+                                    format!(
+                                        "Error plotting {target}-{}.svg",
+                                        matrix_type.display_name()
+                                    )
+                                })?
+                        }
+                        ClusterOption::Tree => {
+                            plot_heat_phylo(sqm, &cfg, &target, matrix_type.display_name())
+                                .with_context(|| {
+                                    format!(
+                                        "Error plotting {target}-{}.svg",
+                                        matrix_type.display_name()
+                                    )
+                                })?
+                        }
+                    }
+                }
             }
         }
 

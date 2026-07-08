@@ -156,6 +156,62 @@ pub struct CoverageConfig {
 #[derive(Debug, Deserialize)]
 pub struct ClusterConfig {
     pub cluster_option: ClusterOption,
+    pub matrix_types: MatrixTypes,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MatrixTypes {
+    pub expenrd: bool,
+    pub jaccard: bool,
+    pub mutuald: bool,
+    pub njointp: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum MatrixType {
+    Expenrd,
+    Jaccard,
+    Mutuald,
+    Njointp,
+}
+
+impl MatrixTypes {
+    pub fn enabled_matrix_types(&self) -> Vec<MatrixType> {
+        let mut enabled = Vec::new();
+        if self.expenrd {
+            enabled.push(MatrixType::Expenrd);
+        }
+        if self.jaccard {
+            enabled.push(MatrixType::Jaccard);
+        }
+        if self.mutuald {
+            enabled.push(MatrixType::Mutuald);
+        }
+        if self.njointp {
+            enabled.push(MatrixType::Njointp);
+        }
+        enabled
+    }
+}
+
+impl MatrixType {
+    pub fn display_name(self) -> &'static str {
+        match self {
+            MatrixType::Expenrd => "EXPENRD",
+            MatrixType::Jaccard => "JACCARD",
+            MatrixType::Mutuald => "MUTUALD",
+            MatrixType::Njointp => "NJOINTP",
+        }
+    }
+
+    pub fn file_suffix(self) -> &'static str {
+        match self {
+            MatrixType::Expenrd => "-EXPENRD.sqm",
+            MatrixType::Jaccard => "-JACCARD.sqm",
+            MatrixType::Mutuald => "-MUTUALD.sqm",
+            MatrixType::Njointp => "-NJOINTP.sqm",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -239,29 +295,65 @@ impl Config {
     }
 }
 
-const _MATRIX_TARGET_SUFFIXES: &[&str] = &[
-    "-EXPENRD.sqm",
-    "-JACCARD.sqm",
-    "-MUTUALD.sqm",
-    "-NJOINTP.sqm",
-];
-
 const HEURISTICS_REQUIRED_SUFFIXES: &[&str] = &["-allAlleles.txt"];
 const COVERAGE_REQUIRED_TABLE_SUFFIXES: &[&str] =
     &["-variants.txt", "-coverage.txt", "-pairingStats.txt"];
 const CLUSTERMAP_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt"];
-const CLUSTERMAP_REQUIRED_MATRIX_SUFFIXES: &[&str] = &["-EXPENRD.sqm"];
 
+#[derive(Debug, Default)]
+pub struct ClusterTargets {
+    pub expenrd: BTreeSet<String>,
+    pub jaccard: BTreeSet<String>,
+    pub mutuald: BTreeSet<String>,
+    pub njointp: BTreeSet<String>,
+}
+
+impl ClusterTargets {
+    pub fn insert(&mut self, matrix_type: MatrixType, target: String) {
+        self.targets_for_mut(matrix_type).insert(target);
+    }
+
+    pub fn targets_for(&self, matrix_type: MatrixType) -> &BTreeSet<String> {
+        match matrix_type {
+            MatrixType::Expenrd => &self.expenrd,
+            MatrixType::Jaccard => &self.jaccard,
+            MatrixType::Mutuald => &self.mutuald,
+            MatrixType::Njointp => &self.njointp,
+        }
+    }
+
+    fn targets_for_mut(&mut self, matrix_type: MatrixType) -> &mut BTreeSet<String> {
+        match matrix_type {
+            MatrixType::Expenrd => &mut self.expenrd,
+            MatrixType::Jaccard => &mut self.jaccard,
+            MatrixType::Mutuald => &mut self.mutuald,
+            MatrixType::Njointp => &mut self.njointp,
+        }
+    }
+
+    pub fn variant_targets(&self) -> BTreeSet<String> {
+        self.expenrd
+            .union(&self.jaccard)
+            .chain(self.mutuald.union(&self.njointp))
+            .cloned()
+            .collect()
+    }
+}
+
+/// A collection of confirmed targets, stored separately for each plot type
 #[derive(Debug, Default)]
 pub struct PlotTargets {
     pub heuristics: BTreeSet<String>,
     pub coverage: BTreeSet<String>,
-    pub clustermap: BTreeSet<String>,
+    pub clustermap: ClusterTargets,
 }
 
 impl PlotTargets {
     pub fn variant_targets(&self) -> BTreeSet<String> {
-        self.coverage.union(&self.clustermap).cloned().collect()
+        self.coverage
+            .union(&self.clustermap.variant_targets())
+            .cloned()
+            .collect()
     }
 
     /// cross-check the targets for each plot type to see if there are targets
@@ -280,9 +372,11 @@ impl PlotTargets {
             warn_missing(&self.coverage, &self.heuristics, "coverage", "heuristics");
         }
 
+        let clustermap_targets = self.clustermap.variant_targets();
+
         if toggles.heuristics && toggles.clustermap {
             warn_missing(
-                &self.clustermap,
+                &clustermap_targets,
                 &self.heuristics,
                 "clustermap",
                 "heuristics",
@@ -290,7 +384,12 @@ impl PlotTargets {
         }
 
         if toggles.coverage && toggles.clustermap {
-            warn_missing(&self.clustermap, &self.coverage, "clustermap", "coverage");
+            warn_missing(
+                &clustermap_targets,
+                &self.coverage,
+                "clustermap",
+                "coverage",
+            );
         }
     }
 }
@@ -321,19 +420,32 @@ pub fn resolve_targets(cfg: &Config) -> Result<PlotTargets> {
 
     let io_args = cfg.io_args()?;
     let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
-    discover_targets_by_plot_type(&table_path, &matrix_path, &cfg.plot_toggles)
+    discover_targets_by_plot_type(
+        &table_path,
+        &matrix_path,
+        &cfg.plot_toggles,
+        &cfg.plot_specific.cluster_config.matrix_types,
+    )
 }
 
 fn discover_targets_by_plot_type(
     table_dir: &Path,
     matrix_dir: &Path,
     plot_toggles: &PlotToggles,
+    matrix_types: &MatrixTypes,
 ) -> Result<PlotTargets> {
     let mut plot_targets = PlotTargets::default();
     // collects all possible heuristics targets
     if plot_toggles.heuristics {
-        plot_targets.heuristics =
+        let possible_heuristics_targets =
             discover_candidate_targets(table_dir, HEURISTICS_REQUIRED_SUFFIXES)?;
+        for possible_target in possible_heuristics_targets {
+            let required_heuristics_files =
+                required_target_files(table_dir, &possible_target, HEURISTICS_REQUIRED_SUFFIXES);
+            if validate_target_files(&possible_target, required_heuristics_files, "heuristics") {
+                plot_targets.heuristics.insert(possible_target);
+            }
+        }
     }
 
     // collects all possible coverage targets
@@ -357,26 +469,26 @@ fn discover_targets_by_plot_type(
     if plot_toggles.clustermap {
         // we only need to check the matrix directory for targets, since empty
         // variants files will be created for each target even if there's no matrix
-        let possible_clustermap_targets =
-            discover_candidate_targets(matrix_dir, CLUSTERMAP_REQUIRED_MATRIX_SUFFIXES)?;
+        for matrix_type in matrix_types.enabled_matrix_types() {
+            let possible_clustermap_targets =
+                discover_candidate_targets(matrix_dir, &[matrix_type.file_suffix()])?;
 
-        for possible_target in possible_clustermap_targets {
-            // build up a list of theoretical paths, both from the matrix
-            // directory and table directory, that all need to exist to create
-            // the given target's clustermap
-            let mut required = required_target_files(
-                table_dir,
-                &possible_target,
-                CLUSTERMAP_REQUIRED_TABLE_SUFFIXES,
-            );
-            required.extend(required_target_files(
-                matrix_dir,
-                &possible_target,
-                CLUSTERMAP_REQUIRED_MATRIX_SUFFIXES,
-            ));
+            for possible_target in possible_clustermap_targets {
+                // build up a list of theoretical paths, both from the matrix
+                // directory and table directory, that all need to exist to create
+                // the given target's clustermap
+                let mut required = required_target_files(
+                    table_dir,
+                    &possible_target,
+                    CLUSTERMAP_REQUIRED_TABLE_SUFFIXES,
+                );
+                required.push(
+                    matrix_dir.join(format!("{possible_target}{}", matrix_type.file_suffix())),
+                );
 
-            if validate_target_files(&possible_target, required, "clustermap") {
-                plot_targets.clustermap.insert(possible_target);
+                if validate_target_files(&possible_target, required, "clustermap") {
+                    plot_targets.clustermap.insert(matrix_type, possible_target);
+                }
             }
         }
     }
@@ -398,7 +510,9 @@ fn discover_candidate_targets(dir: &Path, suffixes: &[&str]) -> Result<BTreeSet<
         };
 
         for suffix in suffixes {
-            if let Some(target) = file_name.strip_suffix(suffix) {
+            if let Some(target) = file_name.strip_suffix(suffix)
+                && !target.is_empty()
+            {
                 targets.insert(target.to_owned());
                 break;
             }
@@ -433,18 +547,18 @@ fn validate_target_files(target: &str, required_files: Vec<PathBuf>, plot_type: 
         return true;
     }
 
-    let mut details = Vec::new();
-    details.push(format!("Could not create {plot_type} plot for {target}; "));
-    if !missing_files.is_empty() {
-        details.push(format!(
-            "missing required files: {}",
+    // The existence of clustermap matrices is dependent on the data, and it is
+    // quite likely that for some segments there is a clustermap and some there
+    // is not, even if clustermap is enabled for the entire run.
+    if plot_type != "clustermap" {
+        eprintln!(
+            "Could not create {plot_type} plot for {target}; missing required files: {}",
             missing_files
                 .iter()
                 .map(|path| path.display().to_string())
                 .collect::<Vec<_>>()
                 .join(", ")
-        ));
+        );
     }
-    eprintln!("{}", details.join(""));
     false
 }

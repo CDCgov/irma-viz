@@ -22,3 +22,4 @@ paired = true
 
 [cluster_options]
 cluster_option = "clustermap" # either "clustermap" or "tree"
+matrix_types = { expenrd = true, jaccard = true, mutuald = false, njointp = false }
