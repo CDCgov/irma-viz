@@ -338,6 +338,43 @@ impl ClusterTargets {
             .cloned()
             .collect()
     }
+
+    pub fn check_missing_matrix_targets(&self, matrix_types: &MatrixTypes) {
+        let enabled = matrix_types.enabled_matrix_types();
+        if enabled.len() < 2 {
+            return;
+        }
+
+        let any_enabled_targets: BTreeSet<String> = enabled
+            .iter()
+            .flat_map(|matrix_type| self.targets_for(*matrix_type).iter().cloned())
+            .collect();
+
+        for target in any_enabled_targets {
+            let present_in = enabled
+                .iter()
+                .filter(|matrix_type| self.targets_for(**matrix_type).contains(&target))
+                .map(|matrix_type| matrix_type.display_name())
+                .collect::<Vec<_>>();
+
+            if present_in.len() == enabled.len() {
+                continue;
+            }
+
+            let missing_from = enabled
+                .iter()
+                .filter(|matrix_type| !self.targets_for(**matrix_type).contains(&target))
+                .map(|matrix_type| matrix_type.display_name())
+                .collect::<Vec<_>>();
+
+            eprintln!(
+                "Warning: clustermap matrix files were found for target {} for enabled matrix {} but not in enabled {}",
+                target,
+                present_in.join(", "),
+                missing_from.join(", ")
+            );
+        }
+    }
 }
 
 /// A collection of confirmed targets, stored separately for each plot type
@@ -359,7 +396,9 @@ impl PlotTargets {
     /// cross-check the targets for each plot type to see if there are targets
     /// missing from one plot but not another. Also checks if no targets were
     /// found for a given plot type (excluding clustermap)
-    pub fn check_missing_targets(&self, toggles: &PlotToggles) {
+    pub fn check_missing_targets(&self, cfg: &Config) {
+        let toggles = &cfg.plot_toggles;
+
         if toggles.heuristics && self.heuristics.is_empty() {
             eprintln!("Warning: heuristics plotting was enabled but no valid targets were found");
         }
@@ -390,6 +429,11 @@ impl PlotTargets {
                 "clustermap",
                 "coverage",
             );
+        }
+
+        if toggles.clustermap {
+            self.clustermap
+                .check_missing_matrix_targets(&cfg.plot_specific.cluster_config.matrix_types);
         }
     }
 }

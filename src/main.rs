@@ -29,7 +29,7 @@ fn main() -> Result<()> {
     let cfg = apply_cli_overrides(cfg, &cli);
 
     let plot_targets = resolve_targets(&cfg)?;
-    plot_targets.check_missing_targets(&cfg.plot_toggles);
+    plot_targets.check_missing_targets(&cfg);
 
     let io_args = cfg.io_args()?;
     let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
