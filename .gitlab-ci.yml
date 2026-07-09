@@ -1,0 +1,52 @@
+image: rustlang/rust:nightly
+
+stages:
+  - build
+  - test
+  - deploy
+
+cache: {}
+
+irma-viz-build:
+  stage: build
+  tags:
+    - docker
+  script:
+    - cargo build
+  artifacts:
+    paths:
+      - .cargo
+      - target
+    expire_in: 12 hours
+
+irma-viz-test:
+  stage: test
+  tags:
+    - docker
+  dependencies:
+    - irma-viz-build
+  script:
+    - perl .github/scripts/check_versions_changelog.pl
+    - cargo test
+    - cargo doc --no-deps --document-private-items
+  artifacts:
+    paths:
+      - target/doc
+    expire_in: 12 hours
+
+pages:
+  stage: deploy
+  image: rustlang/rust:nightly
+  tags:
+    - pages
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  dependencies:
+    - irma-viz-test
+  script:
+    - mv target/doc public/
+    - echo "<meta http-equiv=\"refresh\" content=\"0; url=irma_viz\">" > public/index.html
+  artifacts:
+    paths:
+      - public
+    expire_in: 12 hours

@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "test"
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  RELEASE_BIN: irma-viz
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract Changelog
+        id: extract_changelog
+        shell: bash
+        run: perl .github/scripts/last_release_notes.pl > $RUNNER_TEMP/release_notes.md
+
+      - name: Create Release
+        id: create_release
+        shell: bash
+        run: |
+          [[ "${{ github.ref_name }}" == "test" ]] && latest="--latest=false" || latest=
+
+          gh release create "${{ github.ref_name }}" \
+          --title "IRMA-viz ${{ github.ref_name }}" \
+          --notes-file "$RUNNER_TEMP/release_notes.md" \
+          --draft \
+          $latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-artifacts:
+    name: Build Linux Artifacts
+    needs: [create-release]
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install latest nightly Rust
+        run: |
+          rustup update nightly
+          rustup default nightly
+
+      - name: Build
+        run: cargo build --profile prod
+
+      - name: Package Binary
+        shell: bash
+        run: |
+          tar -czf ${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz \
+            -C target/prod ${{ env.RELEASE_BIN }}
+
+      - name: Upload Linux Release Asset
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" ${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-mac-artifacts:
+    name: Build Mac Artifacts
+    needs: create-release
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install latest nightly Rust
+        run: |
+          rustup update nightly
+          rustup default nightly
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build
+        run: |
+          cargo build --profile prod --target aarch64-apple-darwin --target x86_64-apple-darwin
+
+      - name: Package Binary
+        shell: bash
+        run: |
+          lipo -create -output ${{ env.RELEASE_BIN }} \
+            target/aarch64-apple-darwin/prod/${{ env.RELEASE_BIN }} \
+            target/x86_64-apple-darwin/prod/${{ env.RELEASE_BIN }}
+          tar -czf ${{ env.RELEASE_BIN }}-apple-universal-${{ github.ref_name }}.tar.gz ${{ env.RELEASE_BIN }}
+
+      - name: Upload Release Asset
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" ${{ env.RELEASE_BIN }}-apple-universal-${{ github.ref_name }}.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-integrated-package:
+    name: Create Integrated Package
+    needs: [build-mac-artifacts, build-linux-artifacts]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download Release Assets
+        shell: bash
+        run: |
+          gh release download "${{ github.ref_name }}" -p ${{ env.RELEASE_BIN }}-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Binaries and Create Integrated Package
+        shell: bash
+        run: |
+          bin=${{ env.RELEASE_BIN }}
+          tag=${{ github.ref_name }}
+          tar -xzf ${bin}-apple-universal-${tag}.tar.gz && mv ${bin} ${bin}_Darwin \
+          && tar -xzf ${bin}-linux-x86_64-${tag}.tar.gz && mv ${bin} ${bin}_Linux_x86_64 \
+          && tar -xzf ${bin}-linux-aarch64-${tag}.tar.gz && mv ${bin} ${bin}_Linux_aarch64 \
+          && rm *gz \
+          && zip ${bin}-integrated-${tag}.zip ${bin}_*
+
+      - name: Upload Integrated Package
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" ${{ env.RELEASE_BIN }}-integrated-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Release
+        if: github.ref_name != 'test'
+        shell: bash
+        run: |
+          gh release edit "${{ github.ref_name }}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

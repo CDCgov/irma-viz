@@ -141,6 +141,7 @@ paired = true
 
 [cluster_options]
 cluster_option = "clustermap"
+matrix_types = { expenrd = true, jaccard = false, mutuald = false, njointp = false }
 ```
 
 ## Input Files
@@ -177,5 +178,5 @@ It also writes:
 
 - CLI flags are overrides, not replacements for the config model.
 - `--paired` only affects `READ_PERCENTAGES.svg`.
-- `tree_height` and `cluster_option` affect `{target}-EXPENRD.svg`.
+- `tree_height`, `cluster_option`, and `cluster_options.matrix_types` control which matrix-based cluster figures are rendered.
 - The repository also includes `original_r_plots/` for reference outputs and `test_tables/` plus `test_matrices/` for local testing.

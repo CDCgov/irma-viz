@@ -1,12 +1,24 @@
 [package]
 name = "irma-viz"
-version = "0.0.1"
+version = "0.1.0-dev"
 edition = "2024"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", default-features = false, features = ["derive", "help", "std"] }
 anyhow = "1"
 csv = "1"
-kuva = "0.2.0"
+kuva = "0.2"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+strip = true
+
+[profile.prod]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
