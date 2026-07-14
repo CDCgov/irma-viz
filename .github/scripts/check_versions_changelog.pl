@@ -14,7 +14,7 @@ local $RS = "\n";
 my $pkgid = qx(cargo pkgid -p irma-viz 2>&1);
 die "cargo pkgid failed for package 'irma-viz': $pkgid" if $CHILD_ERROR != 0;
 
-my ($toml_version) = $pkgid =~ /[#@]([^ \n]+)$/;
+my ($toml_version) = $pkgid =~ /#(?:[^@\s#]+@)?([^\s#@]+)$/;
 die "Could not parse version from cargo pkgid output: $pkgid" if !defined $toml_version;
 
 if ( $changelog =~ /^## \[(.*?)\] - (\S+?)$/sm ) {
