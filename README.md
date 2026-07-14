@@ -141,10 +141,10 @@ There are up to four possible similarity matrices that IRMA can export for a giv
 
 <!-- markdownlint-configure-file {"MD033": {"allowed_elements": ["img"]}} -->
 
-- **EXPENRD**: Equal to Jaccard, unless the total number of read patterns that cover the sites being compared is less than or equal to 20, otherwise it uses a custom distance as fallback:   <img src="https://latex.codecogs.com/png.latex?1 - ( ( \text{joint} * m_nA ) / ( m_x1 * m_x2 ) )" alt="(joint*mnA)/(mx1*mx2)" />
-- **JACCARD**: [Jaccard-style distance](https://en.wikipedia.org/wiki/Jaccard_index):   <img src="https://latex.codecogs.com/png.latex?1 - \text{joint}^2 / (mx1 * mx2)" alt="1-joint^2/(mx1*mx2)"/>
-- **MUTUALD**: A co-occurrence distance, calculated with:   <img src="https://latex.codecogs.com/png.latex?1 - \text{joint} / (m_x1 + m_x2 - \text{joint})" alt="1-joint/(mx1+mx2-joint)"/>
-- **NJOINTP**: A simple distance from the joint frequency, calculated with:   <img src="https://latex.codecogs.com/png.latex?1 - 2*\text{joint}" alt="1-2*joint"/>
+- **EXPENRD**: Equal to Jaccard, unless the total number of read patterns that cover the sites being compared is less than or equal to 20, otherwise it uses a custom distance as fallback:   <img src="demo/expenrd_equation.svg" alt="(joint*mnA)/(mx1*mx2)" height="14" />
+- **JACCARD**: [Jaccard-style distance](https://en.wikipedia.org/wiki/Jaccard_index):   <img src="demo/jaccard_equation.svg" alt="1-joint^2/(mx1*mx2)" height="14"/>
+- **MUTUALD**: A co-occurrence distance, calculated with:   <img src="demo/mutuald_equation.svg" alt="1-joint/(mx1+mx2-joint)" height="14" />
+- **NJOINTP**: A simple distance from the joint frequency, calculated with:   <img src="demo/njointp_equation.svg" alt="1-2*joint" height="14"/>
 
 For these calculations:
 
