@@ -10,8 +10,12 @@ my $changelog = <$fh>;
 close $fh or croak "Can't close CHANGELOG.md: $OS_ERROR";
 
 local $RS = "\n";
-my $toml_version = ( split '#', qx(cargo pkgid -p irma-viz) )[1];
-chomp($toml_version);
+
+my $pkgid = qx(cargo pkgid -p irma-viz 2>&1);
+die "cargo pkgid failed for package 'irma-viz': $pkgid" if $CHILD_ERROR != 0;
+
+my ($toml_version) = $pkgid =~ /[#@]([^ \n]+)$/;
+die "Could not parse version from cargo pkgid output: $pkgid" if !defined $toml_version;
 
 if ( $changelog =~ /^## \[(.*?)\] - (\S+?)$/sm ) {
     my ( $version, $date ) = ( $1, $2 );
