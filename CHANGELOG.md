@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file. The format
 is roughly based on [Keep a Changelog], and this project tries to adheres to
 [Semantic Versioning].
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-07-14
 
 - Initial release. IRMA-Viz can reproduce the original IRMA plots.
 
