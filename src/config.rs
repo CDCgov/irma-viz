@@ -14,7 +14,7 @@ pub struct Args {
     #[command(flatten)]
     pub io_args: IOArgs,
     /// Path to config TOML
-    #[arg(long, default_value = "config.toml")]
+    #[arg(long, short = 'c', default_value = "config.toml")]
     pub config: String,
     /// Which figures to plot
     #[command(flatten)]
@@ -126,6 +126,9 @@ pub struct PlotSpecificArgs {
     pub cluster_option: Option<ClusterOption>,
 }
 
+/// Controls whether coverage variant reference lines are colored by ACGT
+/// identity of the variant nucleotide, or by the observed frequency of the
+/// variant
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum CoverageColorOption {
@@ -133,6 +136,8 @@ pub enum CoverageColorOption {
     Frequency,
 }
 
+/// For selecting between a sankey flow diagram and a dashboard of pie charts
+/// describing the classifications of the reads in the IRMA run
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum PercentVizOption {
@@ -140,6 +145,8 @@ pub enum PercentVizOption {
     Pie,
 }
 
+/// Selects for clustermap plot whether to use a plain heatmap or a phylogenetic
+/// tree paired with a heatmap
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum ClusterOption {
@@ -147,18 +154,21 @@ pub enum ClusterOption {
     Tree,
 }
 
+/// Holds all config options for coverage plot
 #[derive(Debug, Deserialize)]
 pub struct CoverageConfig {
     #[serde(rename = "variant_color")]
     pub color_option: CoverageColorOption,
 }
 
+/// Holds all config options for cluster plots
 #[derive(Debug, Deserialize)]
 pub struct ClusterConfig {
     pub cluster_option: ClusterOption,
     pub matrix_types: MatrixTypes,
 }
 
+/// Possible matrix types for cluster plot input/output
 #[derive(Debug, Deserialize)]
 pub struct MatrixTypes {
     pub expenrd: bool,
@@ -197,6 +207,7 @@ impl MatrixTypes {
 }
 
 impl MatrixType {
+    /// for generating output filenames for the cluster plots
     pub fn display_name(self) -> &'static str {
         match self {
             MatrixType::Expenrd => "EXPENRD",
@@ -206,6 +217,7 @@ impl MatrixType {
         }
     }
 
+    /// for generating filenames for reading in cluster matrix data
     pub fn file_suffix(self) -> &'static str {
         match self {
             MatrixType::Expenrd => "-EXPENRD.sqm",
@@ -216,18 +228,22 @@ impl MatrixType {
     }
 }
 
+/// All configuration options for read-percent plots
 #[derive(Debug, Deserialize)]
 pub struct ReadPercentConfig {
     pub viz_option: PercentVizOption,
     pub paired: bool,
 }
 
+/// takes the config value and the override value (from CLI) and applies the
+/// override value on top of the default if applicable
 fn merge<T>(target: &mut T, override_val: Option<T>) {
     if let Some(v) = override_val {
         *target = v;
     }
 }
 
+/// takes all default/config options and applies any applicable CLI arguments as overrides on top of them
 pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     cfg.io_args = Some(args.io_args.clone());
 
@@ -277,6 +293,7 @@ pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
     cfg
 }
 
+/// parses the config file into structs using the [toml] crate
 pub fn load_config(path: &str) -> Result<Config> {
     let s = fs::read_to_string(path).with_context(|| format!("Error reading \'{path}\'"))?;
     let cfg: Config = toml::from_str(&s).with_context(|| format!("Error parsing \'{path}\'"))?;
@@ -484,6 +501,7 @@ pub fn resolve_targets(cfg: &Config) -> Result<PlotTargets> {
     )
 }
 
+/// finds all valid targets for each given plot type and stores them seperately
 fn discover_targets_by_plot_type(
     table_dir: &Path,
     matrix_dir: &Path,

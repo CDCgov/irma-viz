@@ -9,9 +9,8 @@ coverage = true
 min_aq = 24     # minimum average variant quality, does not apply to deletions
 min_f = 0.008   # minimum frequency for single nucleotide variants
 min_tcc = 100   # minimum non-ambiguous column coverage
-min_conf = 0.80 # minimum confidence not machine error
-# Tree height for aglomerative clustering of variant sites
-tree_height = 0.78
+min_conf = 0.8 # minimum confidence not machine error
+tree_height = 0.78 # Tree height for agglomerative clustering of variant sites, if "tree" is selected
 
 [coverage_options]
 variant_color = "nucleotide" # either "nucleotide" for original configuration, or "frequency" for possible change

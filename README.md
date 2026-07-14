@@ -6,270 +6,184 @@ be allowed to remove this notice. This material is draft.**
 
 ## Overview
 
-`irma-viz` is a Rust command-line tool for rendering IRMA (Iterative Refinement
-Meta-Assembler) report plots as SVG files. The tool automates the visualization
-of bioinformatic analysis results, converting tabular IRMA outputs and
-quantitative matrices into useful figures.
+`irma-viz` is a Rust command-line tool for rendering
+[IRMA](https://wonder.cdc.gov/amd/flu/irma/) report plots as SVG files. The tool
+automates the visualization of IRMA's matrix and table outputs.
 
-**Purpose:** To provide fast, reliable plotting for IRMA reports, enabling
+![combined_plots_demo](demo/combined.png)
+
+### Purpose
+
+To provide fast, reliable plotting for IRMA reports, enabling
 streamlined analysis workflows.
 
-**Goals:**
+### Goals
 
 - Reproduce the original IRMA visualization outputs faithfully
 - Provide flexible configuration and command-line options for customization
-- Support multiple plot types (sankey diagrams, pie charts, heatmaps, coverage
-  diagrams)
-- Maintain ease of use through config files and sensible defaults
+- Maintain ease of use through configuration files and default settings
 
 ## Features
 
 `irma-viz` reads an IRMA output directory containing `tables/` and `matrices/`
-subdirectories, discovers plot targets from the files that are present, and
-renders:
+subdirectories, discovers viral `ctype`s (compound type) from the files that are
+present, and renders:
 
-- `READ_PERCENTAGES.svg` as either a sankey diagram or a pie-panel figure
-- `{target}-heuristics.svg`
-- `{target}-coverageDiagram.svg`
-- `{target}-{matrix-type}.svg` for each enabled clustermap matrix type when
+- `READ_PERCENTAGES.svg` as either a sankey diagram or array of pie charts
+- `{ctype}-heuristics.svg`
+- `{ctype}-coverageDiagram.svg`
+- `{ctype}-{matrix-type}.svg` for each enabled clustermap matrix type when
   matching matrix and variants inputs are present and the variants file has more
   than one variant
 
 ## Build
 
 ```bash
-cargo build
+cargo build --profile prod
 ```
 
 ## Run
-
-The binary loads a TOML config, then applies CLI overrides on top. Input and
-output paths are supplied on the command line, not in the config file.
 
 ```bash
 cargo run -- --input-root path/to/irma-run
 ```
 
-To use a non-default config:
+The binary loads a `TOML` config, then applies CLI overrides on top. The path to
+the config `TOML` is assumed to be in the current folder, unless otherwise
+specified.
 
-```bash
-cargo run -- --config path/to/config.toml --input-root path/to/irma-run
-```
+The `--input-root` (`-i`) must be specified, and should be the base path of the
+`IRMA` run, where `IRMA-viz` expects a `matrices/` and `tables/` directory.
 
-To write outputs somewhere else:
+The output path will be in `input-root/figures` unless otherwise specified.
 
-```bash
-cargo run -- --input-root path/to/irma-run --output-path out/
-```
+## Arguments
 
-To override heuristic thresholds from the command line:
+| Parameter              | Default                      | Kind    | Description                                                                                                                          |
+| ---------------------- | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `--input-root` (`-i`)  | This argument is required    | Path    | The path to the base directory of an IRMA run                                                                                        |
+| `--output-path` (`-o`) | `path/to/input/root/figures` | Path    | Output directory for the generated figures                                                                                           |
+| `--config` (`-c`)      | `./config.toml`              | Path    | Path to config file. The default assumes that the file exists in the working directory                                               |
+| `--read-percentages`   | True                         | Boolean | Toggles generation of the `READ_PERCENTAGES.svg` figure for the entire `IRMA` run                                                    |
+| `--heuristics`         | True                         | Boolean | Toggles generation of the `{ctype}_heuristics.svg` figure for any discovered ctypes in the `IRMA` run                                |
+| `--coverage`           | True                         | Boolean | Toggles generation of the `{ctype}_coverageDiagram.svg` figure of any discovered ctypes in the `IRMA` run                            |
+| `--clustermap`         | True                         | Boolean | Toggles generation of the clustermaps if two or more variants are identified for a sample. See [Clustermap](#clustermap) for details |
 
-```bash
-cargo run -- --input-root path/to/irma-run --min-aq 24 --min-f 0.008 --min-tcc 100 --min-conf 0.80
-```
+## Plot-Specific CLI Arguments
 
-To override plot-specific options from the command line:
+These are CLI overrides for arguments within the configuration for specific plots.
 
-```bash
-cargo run -- --input-root path/to/irma-run --coverage-variant-color frequency --read-percentages-viz pie --paired true --cluster-option tree
-```
+Note that for plotting purposes, for the four heuristics parameters, these do
+not affect the calculations or data in the plots, and are used solely for
+reference lines and/or axis boundaries. These defaults are from `IRMA`'s `FLU`
+module.
 
-To enable or disable plot types from the command line:
+| Parameter                  | Plot             | Default      | Kind                      | Description                                                                                                                                                             |
+| -------------------------- | ---------------- | ------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--min-aq`                 | heuristics       | 24           | [0,64]                    | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                       |
+| `--min-f`                  | heuristics       | 0.008        | [0,1]                     | Minimum frequency heuristic for calling single nucleotide variants                                                                                                      |
+| `--min-tcc`                | heuristics       | 100          | ≥ 1                       | Minimum coverage depth heuristic (tool coverage count) for calling variants                                                                                             |
+| `--min-conf`               | heuristics       | 0.8          | [0,1]                     | Minimum confidence not machine error for single nucleotide variants                                                                                                     |
+| `--coverage-variant-color` | coverage         | nucleotide   | "nucleotide", "frequency" | Controls colors for vertical reference line for each variant, which are colored either based on the nucleotide identity of the variant, or the frequency of the variant |
+| `--read-percentages-viz`   | read-percentages | pie          | "pie", "sankey"           | Chooses between a dashboard of pie charts or a sankey flow diagram to describe the classifications of the reads throughout the IRMA run                                 |
+| `--paired`                 | read-percentages | true         | boolean                   | Whether or not the sample was from paired-end data. Only affects the description text on the read-percentages plot                                                      |
+| `--cluster-option`         | clustermap       | "clustermap" | "clustermap", "tree"      | Chooses between a clustermap or a phylogenetic tree with a heatmap for the clustermap plot                                                                              |
+| `--tree-height`            | clustermap       | 0.78         | [0,1]                     | Tree height for agglomerative clustering of variant sites, if "tree" is selected for `--cluster-option`                                                                 |
 
-```bash
-cargo run -- --input-root path/to/irma-run --coverage false --clustermap true
-```
+## Plots
 
-## CLI
+### Read Percentages
 
-Current help output:
+The read percentages figure shows a summary of all ctypes and their
+categorizations within different steps of the entire IRMA run, displayed across
+three pie charts. Note the `--paired` boolean flag affects the description text
+for the pie charts.
 
-```text
-Render IRMA plots to SVG
+![ReadPercentages_pie](demo/READ_PERCENTAGES.svg)
 
-Usage: irma-viz [OPTIONS] --input-root <INPUT_ROOT>
+The `--read-percentages-viz sankey` option shows a similar breakdown, aggregated into a single sankey flow diagram.
 
-Options:
-  -i, --input-root <INPUT_ROOT>
-          Path to input directory that contains `tables/` and `matrices/`
-  -o, --output-path <OUTPUT_PATH>
-          Destination directory for output figures. If not specified, defaults to `input_root/figures/`
-      --config <CONFIG>
-          Path to config TOML [default: config.toml]
-      --read-percentages <READ_PERCENTAGES>
-          [possible values: true, false]
-      --heuristics <HEURISTICS>
-          [possible values: true, false]
-      --coverage <COVERAGE>
-          [possible values: true, false]
-      --clustermap <CLUSTERMAP>
-          [possible values: true, false]
-      --min-aq <MIN_AQ>
-      --min-f <MIN_F>
-      --min-tcc <MIN_TCC>
-      --min-conf <MIN_CONF>
-      --tree-height <TREE_HEIGHT>
-      --coverage-variant-color <COVERAGE_VARIANT_COLOR>
-          [possible values: nucleotide, frequency]
-      --read-percentages-viz <READ_PERCENTAGES_VIZ>
-          [possible values: sankey, pie]
-      --paired <PAIRED>
-          [possible values: true, false]
-      --cluster-option <CLUSTER_OPTION>
-          [possible values: clustermap, tree]
-  -h, --help
-          Print help
-  -V, --version
-          Print version
-```
+![ReadPercentages_sankey](demo/READ_PERCENTAGES_sankey.svg)
 
-## Config
+### Heuristics
 
-The config file must match the current `Config` schema in `src/config.rs`.
-Unknown top-level sections are rejected. Input, output, and target selection are
-not config-file fields in the current code.
+![A_NA_N1_heuristics](demo/A_NA_N1-heuristics.svg)
 
-Valid top-level sections are:
+The heuristics figure has multiple plots that summarize the distributions that
+IRMA uses as reference points for variant calling decisions within a ctype.
+Plots 1-4 use a kernel density estimation with Silverman's Rule of Thumb for
+bandwidth selection.
 
-- `plot_toggles`
-- `constants`
-- `coverage_options`
-- `percent_options`
-- `cluster_options`
+1. Average allele quality
+2. Zoomed view of the average allele quality
+3. Observed allele frequency from 0 to 10%
+4. Zoomed view of the observed allele frequency
+5. Histogram of coverage depth
+6. Histogram of confidence that an allele is not a machine error
 
-Example:
+`--min-aq` places a vertical reference line for average allele quality (1) and serves as the x-minimum for the zoomed quality plot (2)
+`--min-f` places a vertical reference line for the observed allele frequency (3) and serves as the x-maximum for the zoomed frequency plot (4)
+`--min-tcc` chooses where to add a vertical reference line for the coverage histogram (5)
+`--min-conf` chooses where to add a vertical reference line for the confidence histogram (6)
 
-```toml
-[plot_toggles]
-read_percentages = true
-clustermap = true
-heuristics = true
-coverage = true
+These thresholds are shown for interpretation only: changing the corresponding
+CLI arguments updates the reference lines and axis bounds in the plot, but does
+not recalculate the underlying IRMA outputs.
 
-[constants]
-min_aq = 24
-min_f = 0.008
-min_tcc = 100
-min_conf = 0.80
-tree_height = 0.78
+### Clustermap
 
-[coverage_options]
-variant_color = "nucleotide"
+The clustermap is a square heatmap, where each row/column represents a variant
+site, for example `43C` and `817T`. Each cell encodes the similarity between the
+two sites. The lower the value, the higher the similarity between the sites, and
+the darker the cell is colored.
 
-[percent_options]
-viz_option = "pie"
-paired = true
+There are up to four possible similarity matrices that IRMA can export for a given ctype, giving four possible heatmaps:
 
-[cluster_options]
-cluster_option = "clustermap"
-matrix_types = { expenrd = true, jaccard = false, mutuald = false, njointp = false }
-```
+<!-- markdownlint-configure-file {"MD033": {"allowed_elements": ["img"]}} -->
 
-## Input Files
+- **EXPENRD**: Equal to Jaccard, unless the total number of read patterns that cover the sites being compared is less than or equal to 20, otherwise it uses a custom distance as fallback:   <img src="https://latex.codecogs.com/png.latex?1 - ( ( \text{joint} * m_nA ) / ( m_x1 * m_x2 ) )" alt="(joint*mnA)/(mx1*mx2)" />
+- **JACCARD**: [Jaccard-style distance](https://en.wikipedia.org/wiki/Jaccard_index):   <img src="https://latex.codecogs.com/png.latex?1 - \text{joint}^2 / (mx1 * mx2)" alt="1-joint^2/(mx1*mx2)"/>
+- **MUTUALD**: A co-occurrence distance, calculated with:   <img src="https://latex.codecogs.com/png.latex?1 - \text{joint} / (m_x1 + m_x2 - \text{joint})" alt="1-joint/(mx1+mx2-joint)"/>
+- **NJOINTP**: A simple distance from the joint frequency, calculated with:   <img src="https://latex.codecogs.com/png.latex?1 - 2*\text{joint}" alt="1-2*joint"/>
 
-`--input-root` points to an IRMA run directory. The code derives:
+For these calculations:
 
-- `tables/` as `input_root/tables`
-- `matrices/` as `input_root/matrices`
+- `joint` represents the frequency of the two alleles being observed together on the same reads
+- `mn1`/`mn2` is the minimum of the observed frequency of allele `A` among reads spanning both sites and the overall called frequency of allele `A` at site `s1`/`s2`
+- `mx1`/`mx2` is the maximum of the observed frequency of allele `A` among reads spanning both sites and the overall called frequency of allele `A` at site `s1`/`s2`
+- `mnA` is the minimum of `mn2` and `mn1`
+- The total is the number of reads spanning the two sites, weighted by pattern counts
 
-When read-percentages plotting is enabled, the program looks for this file
-under `tables/`:
+Different matrices/clustermaps can be enabled or disabled within the `config.toml`.
 
-- `READ_COUNTS.txt`
+![A_NA_N1_clustermap](demo/A_NA_N1-EXPENRD.svg)
 
-If `READ_COUNTS.txt` is missing while read-percentages plotting is enabled, the
-program prints a warning and continues.
+The `--cluster-option tree` option does not change the heatmap, but adds more
+focus to the phylogenetic tree paired with the heatmap. This version of the
+dendrogram features scaled branch lengths, and the reference line shows the
+cutoff for where variants are clustered together.
 
-Target-specific plots are discovered from files that are present:
+![A_NA_N1_clustermap_tree](demo/A_NA_N1-EXPENRD_tree.svg)
 
-- Heuristics targets come from `tables/{target}-allAlleles.txt`.
-- Coverage targets come from any of these table files, but all three are
-  required before coverage is plotted:
-  - `{target}-variants.txt`
-  - `{target}-coverage.txt`
-  - `{target}-pairingStats.txt`
-- Clustermap targets are discovered separately for each enabled matrix type in
-  `cluster_options.matrix_types`. For each enabled type, targets come from the
-  matching matrix file under `matrices/`; a matching
-  `tables/{target}-variants.txt` file is also required.
+### Coverage
 
-Discovered target names must be non-empty, no more than 128 characters, and
-contain only ASCII letters, numbers, `_`, `-`, or `.`. Files that imply other
-target names are skipped with a warning.
+Creates a coverage line plot showing the volume of reads covering each position
+along the length of the ctype. If two or more variants are found for the
+ctype, an additional bar plot will be created showing the relative frequencies
+of the variants.
 
-Matrix files are optional per target and per enabled matrix type. IRMA only
-creates clustermap matrices when the target has more than one variant, so the
-absence of a matrix file means that target is not considered a clustermap target
-for that matrix type. This is expected behavior, and `irma-viz` skips clustermap
-plotting for that target and matrix type. If a matrix file is present but the
-variants file has zero or one variant row, clustermap plotting is also skipped
-for that target.
+The axis labels on the bar chart provide the original nucleotide identity of the
+allele, followed by the variant nucleotide, and the number on the bar itself
+represents the position of the allele. For example, a bar labeled `A2G` with
+`38` on the bar represents an `A` being replaced with a `G` at position 38. The
+colors of the bars and their relevant reference lines are based on the
+nucleotide identity of the variant. The `exp_err.` bar and horizontal reference
+line shows the threshold frequency for where variants are called, rather than
+assumed to be errors.
 
-The supported clustermap matrix files are controlled by
-`cluster_options.matrix_types`:
+If one or fewer variants are present, no bar graph will be generated.
 
-- `{target}-EXPENRD.sqm`
-- `{target}-JACCARD.sqm`
-- `{target}-MUTUALD.sqm`
-- `{target}-NJOINTP.sqm`
-
-When multiple matrix types are enabled, `irma-viz` checks each type
-independently. If a valid clustermap target is found for at least one enabled
-matrix type but not another, the program prints a warning and renders the plots
-for the matrix files that are present.
-
-Square matrix files are read as tab-delimited rows where the first field is the
-row label and the remaining fields are floating-point values. Blank lines are
-ignored. The matrix import fails if the file is empty, any value cannot be
-parsed as a float, rows have different lengths, or the number of rows does not
-match the number of numeric columns.
-
-The target-specific filenames are:
-
-- `{target}-allAlleles.txt`
-- `{target}-coverage.txt`
-- `{target}-pairingStats.txt`
-- `{target}-variants.txt`
-- `{target}-EXPENRD.sqm`
-- `{target}-JACCARD.sqm`
-- `{target}-MUTUALD.sqm`
-- `{target}-NJOINTP.sqm`
-
-## Output Files
-
-Outputs are written as SVG files under `input_root/figures/` unless
-`--output-path` overrides the destination directory. The output directory is
-created if needed.
-
-For each discovered target, the renderer writes the following files based on
-enabled plot toggles and available inputs:
-
-- `{target}-heuristics.svg` when `plot_toggles.heuristics = true`
-- `{target}-coverageDiagram.svg` when `plot_toggles.coverage = true`
-- `{target}-{matrix-type}.svg` when `plot_toggles.clustermap = true`, the
-  matrix type is enabled in `cluster_options.matrix_types`, a matching
-  `{target}-{matrix-type}.sqm` matrix exists, and the variant data has more
-  than one row
-  - rendered as a static clustermap when `cluster_options.cluster_option =
-    "clustermap"`
-  - rendered as a phylogenetic tree with heatmap when
-    `cluster_options.cluster_option = "tree"`
-
-Additionally, the renderer writes:
-
-- `READ_PERCENTAGES.svg` when `plot_toggles.read_percentages = true`
-  - rendered as a sankey diagram when `percent_options.viz_option = "sankey"` or
-    `--read-percentages-viz sankey`
-  - rendered as a pie-panel figure when `percent_options.viz_option = "pie"` or
-    `--read-percentages-viz pie`
-
-## Notes
-
-- CLI flags are overrides, not replacements for the config model.
-- `--paired` only affects `READ_PERCENTAGES.svg`.
-- `cluster_option` affects `{target}-{matrix-type}.svg` clustermap outputs.
-- `tree_height` and `--tree-height` affect tree-style
-  `{target}-{matrix-type}.svg` plots.
+![A_NA_N1-coverage](demo/A_NA_N1-coverageDiagram.svg)
 
 ## Notices
 
@@ -278,6 +192,12 @@ Additionally, the renderer writes:
 For direct correspondence on the project, feel free to contact: [Samuel S.
 Shepard](mailto:sshepard@cdc.gov), Centers for Disease Control and Prevention or
 reach out to other [contributors](CONTRIBUTORS.md).
+
+### Development Process
+
+IRMA-Viz is maintained by contributors in CDC/NCIRD/ID who develop changes through
+the project repository. Proposed changes should be made in a feature branch and
+submitted as a pull request for review before they are merged.
 
 ### Public Domain Standard Notice
 

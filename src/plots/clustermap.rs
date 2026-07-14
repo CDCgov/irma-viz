@@ -65,10 +65,7 @@ pub fn plot_heat_phylo(
     let (dendrogram, leaf_order) = kuva_dendro(&data);
     let dendro_layout = Layout::auto_from_plots(&dendrogram)
         .with_title("Variant site clusters")
-        .with_reference_line(
-            ReferenceLine::vertical(line_placement)
-                .with_label(format!("cutoff = {tree_height:.2}")),
-        )
+        .with_reference_line(ReferenceLine::vertical(line_placement))
         .with_scale(1.7);
 
     let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
