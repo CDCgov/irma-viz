@@ -190,8 +190,9 @@ If one or fewer variants are present, no bar graph will be generated.
 ### Contact Info
 
 For direct correspondence on the project, feel free to contact: [Samuel S.
-Shepard](mailto:sshepard@cdc.gov), Centers for Disease Control and Prevention or
-reach out to other [contributors](CONTRIBUTORS.md).
+Shepard](mailto:sshepard@cdc.gov), Influenza Division, National Center for
+Immunization and Respiratory Diseases, Centers for Disease Control and
+Prevention; or reach out to other [contributors](CONTRIBUTORS.md).
 
 ### Development Process
 
