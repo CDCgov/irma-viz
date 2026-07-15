@@ -1,9 +1,5 @@
 # IRMA-Viz
 
-**As a first step, this document is under governance review. When the review
-completes as appropriate per local and agency processes, the project team will
-be allowed to remove this notice. This material is draft.**
-
 ## Overview
 
 `irma-viz` is a Rust command-line tool for rendering
