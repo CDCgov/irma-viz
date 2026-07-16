@@ -56,24 +56,27 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install latest nightly Rust
-        run: |
-          rustup update nightly
-          rustup default nightly
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
-      - name: Build
-        run: cargo build --profile prod
+      - name: Export Linux Binary
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: binary-export
+          outputs: type=local,dest=./extracted
 
       - name: Package Binary
         shell: bash
         run: |
-          tar -czf ${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz \
-            -C target/prod ${{ env.RELEASE_BIN }}
+          tar -czf "${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz" \
+            -C extracted/export "${{ env.RELEASE_BIN }}"
 
       - name: Upload Linux Release Asset
         shell: bash
         run: |
-          gh release upload "${{ github.ref_name }}" ${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+          gh release upload "${{ github.ref_name }}" "${{ env.RELEASE_BIN }}-linux-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
