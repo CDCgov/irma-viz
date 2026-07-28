@@ -1,0 +1,11 @@
+mod cli;
+mod matrices;
+mod parsed_config;
+mod targets;
+mod toml;
+
+pub use cli::{CLIConfig, HeuristicsConfig};
+pub use parsed_config::{
+    ClusterOption, CoverageColorOption, ParsedConfig, PercentVizOption, get_directory_paths,
+};
+pub use toml::load_config;

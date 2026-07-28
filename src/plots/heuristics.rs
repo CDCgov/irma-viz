@@ -1,4 +1,8 @@
-use crate::{ParsedConfig, config::HeuristicsConfig, data::AllAlleles, plots::render_multiplot};
+use crate::{
+    config::{HeuristicsConfig, ParsedConfig},
+    data::AllAlleles,
+    plots::render_multiplot,
+};
 use anyhow::{Context, Result};
 use kuva::{plot::Histogram, prelude::*};
 
