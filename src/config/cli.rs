@@ -13,6 +13,11 @@ pub struct CLIConfig {
     /// Path to config TOML
     #[arg(long, short = 'c', default_value = "config.toml")]
     pub config: String,
+    /// Render one example of every plot type for a single explicit target.
+    /// Only available when built with the `demo` feature.
+    #[cfg(feature = "demo")]
+    #[arg(long)]
+    pub demo_target: Option<String>,
     /// Which figures to plot
     #[command(flatten)]
     pub enabled_plots: PlotToggleCLI,

@@ -174,7 +174,6 @@ impl PlotSpecificConfig {
             // guarantees the argument is present
             paired: cli.paired.unwrap(),
         };
-        // = toml.plot_specific.read_percent;
 
         let cluster_config = ClusterConfig {
             // cluster option is provided via TOML

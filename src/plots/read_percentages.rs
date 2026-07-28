@@ -185,8 +185,6 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
         text_box_layout,
     ];
 
-    let filename = "READ_PERCENTAGES.svg";
-
     let scene = Figure::new(2, 2)
         .with_padding(40.0)
         .with_spacing(30.0)
@@ -194,7 +192,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
         .with_layouts(layouts)
         .render();
 
-    render_multiplot(&scene, &cfg.io_args.output_path, filename)
+    render_multiplot(&scene, &cfg.io_args.output_path, "READ_PERCENTAGES.svg")
 }
 
 fn kuva_pie(

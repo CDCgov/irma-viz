@@ -6,7 +6,7 @@
 [IRMA](https://wonder.cdc.gov/amd/flu/irma/) report plots as SVG files. The tool
 automates the visualization of IRMA's matrix and table outputs.
 
-![combined_plots_demo](demo/combined.png)
+![combined_plots_demo](demo/combined.svg)
 
 ### Purpose
 
@@ -38,11 +38,28 @@ present, and renders:
 cargo build --profile prod
 ```
 
+To include the demo-only entrypoint, build with:
+
+```bash
+cargo build --features demo
+```
+
 ## Run
 
 ```bash
-cargo run -- --input-root path/to/irma-run --min-aq 24 --min-f 0.008 --min-tcc 100
+cargo run -- --input-root path/to/irma-run
 ```
+
+### Demo
+
+With the `demo` feature enabled, you can render one SVG for each plot type for
+an explicit target:
+
+```bash
+cargo run --features demo -- --input-root path/to/irma-run --demo-target A_NP --paired true
+```
+
+### Config
 
 The binary loads a `TOML` config, then applies CLI overrides on top. The path to
 the config `TOML` is assumed to be in the current working directory, unless
@@ -54,7 +71,6 @@ The `--input-root` (`-i`) must be specified, and should be the base path of the
 Since the heuristics thresholds `--min-aq`, `--min-f`, `--min-tcc`, and
 `--min-conf` are expected to vary by IRMA module, they are passed via CLI. If
 omitted, IRMA-viz uses the defaults listed below.
-
 The output path will be in `input-root/figures` unless otherwise specified.
 
 ## Arguments
@@ -115,7 +131,7 @@ pie charts by setting `viz_option = "sankey"` under `[percent_options]` in
 
 ### Heuristics
 
-![A_NA_N1_heuristics](demo/A_NA_N1-heuristics.svg)
+![A_NP_heuristics](demo/A_NP-heuristics.svg)
 
 The heuristics figure has multiple plots that summarize the distributions that
 IRMA uses as reference points for variant calling decisions within a ctype.
@@ -173,14 +189,14 @@ The `tree_height` option under `[cluster_options]` in `config.toml`, overridden
 by the `--tree-height` CLI flag, sets the tree height for agglomerative
 clustering of variant sites.
 
-![A_NA_N1_clustermap](demo/A_NA_N1-EXPENRD.svg)
+![A_NP_clustermap](demo/A_NP-EXPENRD.svg)
 
 Setting `cluster_option = "tree"` under `[cluster_options]` does not change the
 heatmap values, but adds more focus to the phylogenetic tree paired with the
 heatmap. This version of the dendrogram features scaled branch lengths, and the
 reference line shows the cutoff where variants are clustered together.
 
-![A_NA_N1_clustermap_tree](demo/A_NA_N1-EXPENRD_tree.svg)
+![A_NP_clustermap_tree](demo/A_NP-EXPENRD_tree.svg)
 
 ### Coverage
 
@@ -198,10 +214,12 @@ nucleotide identity of the variant. The `exp_err.` bar and horizontal reference
 line show the threshold frequency for where variants are called, rather than
 assumed to be errors.
 
+![A_NP-coverage](demo/A_NP-coverageDiagram.svg)
+
 When `variant_color = "frequency"`, variant reference lines are colored by
 observed frequency and the variant-frequency bar plot is not generated.
 
-![A_NA_N1-coverage](demo/A_NA_N1-coverageDiagram.svg)
+![A_NP-coverage-frequency](demo/A_NP-coverageDiagram_frequency.svg)
 
 ## Notices
 

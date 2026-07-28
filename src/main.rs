@@ -17,21 +17,46 @@ use clap::Parser;
 use std::fs;
 mod config;
 mod data;
+#[cfg(feature = "demo")]
+mod demo;
 mod plots;
 
 fn main() -> Result<()> {
     let cli = CLIConfig::parse();
+    let config_path = cli.config.clone();
+    #[cfg(feature = "demo")]
+    let demo_target = cli.demo_target.clone();
     let toml =
-        load_config(&cli.config).with_context(|| format!("Loading config from {}", cli.config))?;
+        load_config(&config_path).with_context(|| format!("Loading config from {config_path}"))?;
     let cfg = ParsedConfig::merge_configs(toml, cli)?;
 
-    let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
+    #[cfg(feature = "demo")]
+    let mut cfg = cfg;
 
+    #[cfg(feature = "demo")]
+    if let Some(target) = demo_target.as_deref() {
+        cfg.io_args.output_path = std::path::PathBuf::from("demo");
+        ensure_output_dir(&cfg)?;
+        return demo::run_demo(&mut cfg, target);
+    }
+
+    ensure_output_dir(&cfg)?;
+    run_plots(&cfg)
+}
+
+/// Checks if the output directory exists, otherwise creates it.
+fn ensure_output_dir(cfg: &ParsedConfig) -> Result<()> {
     if let output_dir = std::path::Path::new(&cfg.io_args.output_path)
         && !output_dir.as_os_str().is_empty()
     {
         fs::create_dir_all(output_dir)?;
     }
+
+    Ok(())
+}
+
+fn run_plots(cfg: &ParsedConfig) -> Result<()> {
+    let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
 
     // Read Counts
     if cfg.plot_toggles.read_percentages {
@@ -53,7 +78,7 @@ fn main() -> Result<()> {
                             )
                         })?;
 
-                    plot_perc_sankey(sankey_vec, &cfg)
+                    plot_perc_sankey(sankey_vec, cfg)
                         .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
                 }
                 PercentVizOption::Pie => {
@@ -65,7 +90,7 @@ fn main() -> Result<()> {
                             )
                         })?;
 
-                    plot_perc_pies(read_counts, &cfg)
+                    plot_perc_pies(read_counts, cfg)
                         .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
                 }
             }
@@ -81,7 +106,7 @@ fn main() -> Result<()> {
             )
         })?;
 
-        plot_heuristics(allele_data, &cfg, target)
+        plot_heuristics(allele_data, cfg, target)
             .with_context(|| format!("Error plotting {target}-heuristics.svg"))?
     }
 
@@ -117,7 +142,7 @@ fn main() -> Result<()> {
                     })?;
                     match cfg.plot_specific.cluster_config.cluster_option {
                         ClusterOption::Clustermap => {
-                            plot_clustermap(sqm, &cfg, &target, matrix_type.display_name())
+                            plot_clustermap(sqm, cfg, &target, matrix_type.display_name())
                                 .with_context(|| {
                                     format!(
                                         "Error plotting {target}-{}.svg",
@@ -126,10 +151,10 @@ fn main() -> Result<()> {
                                 })?
                         }
                         ClusterOption::Tree => {
-                            plot_heat_phylo(sqm, &cfg, &target, matrix_type.display_name())
+                            plot_heat_phylo(sqm, cfg, &target, matrix_type.display_name())
                                 .with_context(|| {
                                     format!(
-                                        "Error plotting {target}-{}.svg",
+                                        "Error plotting {target}-{}_tree.svg",
                                         matrix_type.display_name()
                                     )
                                 })?
@@ -157,7 +182,7 @@ fn main() -> Result<()> {
                     )
                 })?;
 
-            plot_coverage(coverage, variants, pairing_stats, &cfg, &target)
+            plot_coverage(coverage, variants, pairing_stats, cfg, &target)
                 .with_context(|| format!("Error plotting {target}-coverageDiagram.svg"))?
         }
     }

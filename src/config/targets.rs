@@ -326,7 +326,7 @@ fn validate_target_files(target: &str, required_files: Vec<PathBuf>, plot_type: 
     false
 }
 
-fn is_valid_target_name(target: &str) -> bool {
+pub fn is_valid_target_name(target: &str) -> bool {
     !target.is_empty()
         && target.len() <= 128
         && target
