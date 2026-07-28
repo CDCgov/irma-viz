@@ -1,5 +1,5 @@
 use crate::{
-    config::{MatrixType, ParsedConfig, get_directory_paths, is_valid_target_name},
+    config::{MatrixType, OutputFormat, ParsedConfig, get_directory_paths, is_valid_target_name},
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     plots::{
         clustermap::{plot_clustermap, plot_heat_phylo},
@@ -35,6 +35,7 @@ pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<()> {
         bail!("Error: Invalid target name for demo_target");
     }
     let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
+    cfg.io_args.output_format = OutputFormat::Svg;
 
     // get data for read counts
     let read_counts_path = table_path.join("READ_COUNTS.txt");
@@ -47,7 +48,7 @@ pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<()> {
     plot_perc_sankey(sankey_vec, cfg)
         .with_context(|| "Error plotting READ_PERCENTAGES_sankey.svg")?;
     // rename first plot for the purpose of the demo, since we are creating two
-    // READ_PERCENTAGES plots and don't want the pie charts to get overridden
+    // READ_PERCENTAGES plots and don't want the pie charts to get overwritten
     fs::rename(
         cfg.io_args.output_path.join("READ_PERCENTAGES.svg"),
         cfg.io_args.output_path.join("READ_PERCENTAGES_sankey.svg"),
@@ -159,7 +160,7 @@ pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<()> {
     plot_heat_phylo(sqm.clone(), cfg, target, matrix_name)
         .with_context(|| format!("Error plotting {target}-{matrix_name}_tree.svg"))?;
     // rename first plot for the purpose of the demo, since we are creating two
-    // READ_PERCENTAGES plots and don't want the pie charts to get overridden
+    // clustermap plots and don't want the tree plot to get overwritten
     fs::rename(
         cfg.io_args
             .output_path

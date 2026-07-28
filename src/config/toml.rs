@@ -3,15 +3,27 @@ use std::fs;
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 
-use crate::config::parsed_config::{ClusterConfig, CoverageConfig, PercentVizOption, PlotToggles};
+use crate::config::{
+    OutputFormat,
+    parsed_config::{ClusterConfig, CoverageConfig, PercentVizOption, PlotToggles},
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TOMLConfig {
+    pub output_options: OutputOptions,
+
     pub plot_toggles: PlotToggles,
 
     #[serde(flatten)]
     pub plot_specific: PlotSpecificTOML,
+}
+
+/// Output configuration loaded from the `[output_options]` TOML table.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OutputOptions {
+    pub output_format: OutputFormat,
 }
 
 /// Parses the `config.toml`` file into structs using the [toml] crate

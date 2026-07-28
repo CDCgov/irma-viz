@@ -14,8 +14,9 @@ pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &ParsedConfig) -> Result<()>
     let (plot, layout) = kuva_sankey(sankey_vec);
 
     render_plot(
-        ("READ_PERCENTAGES.svg", (plot, layout)),
+        ("READ_PERCENTAGES", (plot, layout)),
         &cfg.io_args.output_path,
+        cfg.io_args.output_format,
     )
 }
 
@@ -192,7 +193,12 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
         .with_layouts(layouts)
         .render();
 
-    render_multiplot(&scene, &cfg.io_args.output_path, "READ_PERCENTAGES.svg")
+    render_multiplot(
+        &scene,
+        &cfg.io_args.output_path,
+        "READ_PERCENTAGES",
+        cfg.io_args.output_format,
+    )
 }
 
 fn kuva_pie(

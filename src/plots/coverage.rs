@@ -132,7 +132,7 @@ pub fn plot_coverage(
         }
     }
 
-    let filename = format!("{target}-coverageDiagram.svg");
+    let filename = format!("{target}-coverageDiagram");
 
     // skip bar making and multiplot if using frequency for coloring, or if no
     // variants
@@ -157,11 +157,17 @@ pub fn plot_coverage(
             .with_layouts(vec![coverage_layout, bar_layout])
             .render();
 
-        render_multiplot(&scene, &cfg.io_args.output_path, &filename)
+        render_multiplot(
+            &scene,
+            &cfg.io_args.output_path,
+            &filename,
+            cfg.io_args.output_format,
+        )
     } else {
         render_plot(
             (&filename, (coverage_plot, coverage_layout)),
             &cfg.io_args.output_path,
+            cfg.io_args.output_format,
         )
     }
 }

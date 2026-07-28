@@ -108,8 +108,13 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
         ])
         .render();
 
-    let filename = format!("{target}-heuristics.svg");
-    render_multiplot(&scene, &cfg.io_args.output_path, filename.as_str())
+    let filename = format!("{target}-heuristics");
+    render_multiplot(
+        &scene,
+        &cfg.io_args.output_path,
+        filename.as_str(),
+        cfg.io_args.output_format,
+    )
 }
 
 fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {

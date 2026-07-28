@@ -10,10 +10,10 @@ demo = []
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
-clap = { version = "4", default-features = false, features = ["derive", "help", "std", "usage"] }
+clap = { version = "4", default-features = false, features = ["derive", "help", "std", "usage", "error-context"] }
 anyhow = "1"
 csv = "1"
-kuva = "0.2"
+kuva = { version = "0.2", features = ["pdf"] }
 
 [profile.dev]
 opt-level = 1

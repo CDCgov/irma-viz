@@ -3,8 +3,8 @@
 ## Overview
 
 `irma-viz` is a Rust command-line tool for rendering
-[IRMA](https://wonder.cdc.gov/amd/flu/irma/) report plots as SVG files. The tool
-automates the visualization of IRMA's matrix and table outputs.
+[IRMA](https://wonder.cdc.gov/amd/flu/irma/) report plots. The tool automates
+the visualization of IRMA's matrix and table outputs.
 
 ![combined_plots_demo](demo/combined.svg)
 
@@ -25,12 +25,15 @@ streamlined analysis workflows.
 subdirectories, discovers viral `ctype`s (compound type) from the files that are
 present, and renders:
 
-- `READ_PERCENTAGES.svg` as either a sankey diagram or array of pie charts
-- `{ctype}-heuristics.svg`
-- `{ctype}-coverageDiagram.svg`
-- `{ctype}-{matrix-type}.svg` for each enabled clustermap matrix type when
+- `READ_PERCENTAGES` as either a sankey diagram or array of pie charts
+- `{ctype}-heuristics`
+- `{ctype}-coverageDiagram`
+- `{ctype}-{matrix-type}` for each enabled clustermap matrix type when
   matching matrix and variants inputs are present and the variants file has more
   than one variant
+
+All plots can be created either in `.pdf` or `.svg` format, with `.pdf` set as
+the default in the `config.toml`
 
 ## Build
 
@@ -38,16 +41,10 @@ present, and renders:
 cargo build --profile prod
 ```
 
-To include the demo-only entrypoint, build with:
-
-```bash
-cargo build --features demo
-```
-
 ## Run
 
 ```bash
-cargo run -- --input-root path/to/irma-run
+cargo run -- --input-root path/to/irma-run --paired true
 ```
 
 ### Demo
@@ -75,17 +72,19 @@ The output path will be in `input-root/figures` unless otherwise specified.
 
 ## Arguments
 
+### General CLI Arguments and Plot Toggles
+
 | Parameter              | Default                      | Kind    | Description                                                                                                                          |
 | ---------------------- | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `--input-root` (`-i`)  | This argument is required    | Path    | The path to the base directory of an IRMA run                                                                                        |
 | `--output-path` (`-o`) | `path/to/input/root/figures` | Path    | Output directory for the generated figures                                                                                           |
 | `--config` (`-c`)      | `./config.toml`              | Path    | Path to config file. The default assumes that the file exists in the working directory                                               |
-| `--read-percentages`   | True                         | Boolean | Toggles generation of the `READ_PERCENTAGES.svg` figure for the entire `IRMA` run                                                    |
-| `--heuristics`         | True                         | Boolean | Toggles generation of the `{ctype}_heuristics.svg` figure for any discovered ctypes in the `IRMA` run                                |
-| `--coverage`           | True                         | Boolean | Toggles generation of the `{ctype}_coverageDiagram.svg` figure of any discovered ctypes in the `IRMA` run                            |
+| `--read-percentages`   | True                         | Boolean | Toggles generation of the `READ_PERCENTAGES` figure for the entire `IRMA` run                                                        |
+| `--heuristics`         | True                         | Boolean | Toggles generation of the `{ctype}_heuristics` figure for any discovered ctypes in the `IRMA` run                                    |
+| `--coverage`           | True                         | Boolean | Toggles generation of the `{ctype}_coverageDiagram` figure of any discovered ctypes in the `IRMA` run                                |
 | `--clustermap`         | True                         | Boolean | Toggles generation of the clustermaps if two or more variants are identified for a sample. See [Clustermap](#clustermap) for details |
 
-## Plot-Specific CLI Arguments
+### Plot-Specific CLI Arguments
 
 These options are provided by CLI. The heuristics parameters are used only for
 plot reference lines and axis boundaries; changing them does not recalculate the
@@ -100,17 +99,30 @@ underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 | `--paired`      | read-percentages | true    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot |
 | `--tree-height` | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                 |
 
-## Plot-Specific TOML Options
+### General TOML Options and Plot Toggles
+
+The `config.toml` features the ability to set the output file format and toggle
+plots on and off. The plot toggles can be overridden via CLI.
+
+| Section            | Option             | Values           | Default | Description                                                                      |
+| ------------------ | ------------------ | ---------------- | ------- | -------------------------------------------------------------------------------- |
+| `[output_options]` | `output_format`    | `"pdf"`, `"svg"` | `"pdf"` | The output file format for rendered plots                                        |
+| `[plot_toggles]`   | `read_percentages` | boolean          | `true`  | Toggles the creation of the `READ_PERCENTAGES` plot                              |
+| `[plot_toggles]`   | `clustermap`       | boolean          | `true`  | Toggles the creation of `clustermap` plots for enabled matrices for each `ctype` |
+| `[plot_toggles]`   | `heuristics`       | boolean          | `true`  | Toggles the creation of `heuristics` plots for each `ctype`                      |
+| `[plot_toggles]`   | `coverage`         | boolean          | `true`  | Toggles the creation of `coverageDiagram` plots for each `ctype`                 |
+
+### Plot-Specific TOML Options
 
 These options are configured in `config.toml`.
 
-| Section              | Option           | Values                                                      | Description                                                             |
-| -------------------- | ---------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `[coverage_options]` | `variant_color`  | `"nucleotide"`, `"frequency"`                               | Colors variant coverage annotations by nucleotide identity or frequency |
-| `[percent_options]`  | `viz_option`     | `"pie"`, `"sankey"`                                         | Chooses the read-percentages visualization style                        |
-| `[cluster_options]`  | `cluster_option` | `"clustermap"`, `"tree"`                                    | Chooses the clustermap layout style                                     |
-| `[cluster_options]`  | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp` | Selects which clustermap matrix types to generate                       |
-| `[cluster_options]`  | `tree_height`    | number from 0 to 1                                          | Default tree height, overridden by `--tree-height`                      |
+| Section              | Option           | Values                                                      | Default        | Description                                                             |
+| -------------------- | ---------------- | ----------------------------------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `[coverage_options]` | `variant_color`  | `"nucleotide"`, `"frequency"`                               | `"nucleotide"` | Colors variant coverage annotations by nucleotide identity or frequency |
+| `[percent_options]`  | `viz_option`     | `"pie"`, `"sankey"`                                         | `"pie"`        | Chooses the read-percentages visualization style                        |
+| `[cluster_options]`  | `cluster_option` | `"clustermap"`, `"tree"`                                    | `"clustermap"` | Chooses the clustermap layout style                                     |
+| `[cluster_options]`  | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp` | All `true`     | Selects which clustermap matrix types to generate                       |
+| `[cluster_options]`  | `tree_height`    | number from 0 to 1                                          | `0.78`         | Default tree height, overridden by `--tree-height`                      |
 
 ## Plots
 

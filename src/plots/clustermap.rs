@@ -49,10 +49,11 @@ pub fn plot_clustermap(
     let layout = Layout::auto_from_plots(&plot)
         .with_title(format!("Variant site clusters, {target}-{matrix_type}.sqm"));
 
-    let filename = format!("{target}-{matrix_type}.svg");
+    let filename = format!("{target}-{matrix_type}");
     render_plot(
         (filename.as_str(), (plot, layout)),
         &cfg.io_args.output_path,
+        cfg.io_args.output_format,
     )
 }
 
@@ -81,7 +82,7 @@ pub fn plot_heat_phylo(
         .with_tick_size(20)
         .with_tick_width(0.0);
 
-    let filename = format!("{target}-{matrix_type}.svg");
+    let filename = format!("{target}-{matrix_type}");
     let scene = Figure::new(2, 3)
         .with_structure(vec![vec![0, 3], vec![1, 2, 4, 5]])
         .with_plots(vec![dendrogram, heatmap])
@@ -89,7 +90,12 @@ pub fn plot_heat_phylo(
         .with_spacing(0.0)
         .render();
 
-    render_multiplot(&scene, &cfg.io_args.output_path, &filename)
+    render_multiplot(
+        &scene,
+        &cfg.io_args.output_path,
+        &filename,
+        cfg.io_args.output_format,
+    )
 }
 
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {

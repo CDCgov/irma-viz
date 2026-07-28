@@ -1,3 +1,6 @@
+[output_options]
+output_format = "pdf" # either "pdf" or "svg"
+
 [plot_toggles]
 read_percentages = true
 clustermap = true

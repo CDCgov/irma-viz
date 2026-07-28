@@ -78,8 +78,12 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                             )
                         })?;
 
-                    plot_perc_sankey(sankey_vec, cfg)
-                        .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+                    plot_perc_sankey(sankey_vec, cfg).with_context(|| {
+                        format!(
+                            "Error plotting READ_PERCENTAGES{}",
+                            cfg.io_args.output_format
+                        )
+                    })?
                 }
                 PercentVizOption::Pie => {
                     let read_counts = ReadCounts::import_from_file(&read_counts_path)
@@ -90,8 +94,12 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                             )
                         })?;
 
-                    plot_perc_pies(read_counts, cfg)
-                        .with_context(|| "Error plotting READ_PERCENTAGES.svg")?
+                    plot_perc_pies(read_counts, cfg).with_context(|| {
+                        format!(
+                            "Error plotting READ_PERCENTAGES{}",
+                            cfg.io_args.output_format
+                        )
+                    })?
                 }
             }
         }
@@ -106,8 +114,12 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
             )
         })?;
 
-        plot_heuristics(allele_data, cfg, target)
-            .with_context(|| format!("Error plotting {target}-heuristics.svg"))?
+        plot_heuristics(allele_data, cfg, target).with_context(|| {
+            format!(
+                "Error plotting {target}-heuristics{}",
+                cfg.io_args.output_format
+            )
+        })?
     }
 
     for target in cfg.plot_targets.variant_targets() {
@@ -145,8 +157,9 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                             plot_clustermap(sqm, cfg, &target, matrix_type.display_name())
                                 .with_context(|| {
                                     format!(
-                                        "Error plotting {target}-{}.svg",
-                                        matrix_type.display_name()
+                                        "Error plotting {target}-{}{}",
+                                        matrix_type.display_name(),
+                                        cfg.io_args.output_format
                                     )
                                 })?
                         }
@@ -154,8 +167,9 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                             plot_heat_phylo(sqm, cfg, &target, matrix_type.display_name())
                                 .with_context(|| {
                                     format!(
-                                        "Error plotting {target}-{}_tree.svg",
-                                        matrix_type.display_name()
+                                        "Error plotting {target}-{}_tree{}",
+                                        matrix_type.display_name(),
+                                        cfg.io_args.output_format
                                     )
                                 })?
                         }
@@ -182,8 +196,12 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                     )
                 })?;
 
-            plot_coverage(coverage, variants, pairing_stats, cfg, &target)
-                .with_context(|| format!("Error plotting {target}-coverageDiagram.svg"))?
+            plot_coverage(coverage, variants, pairing_stats, cfg, &target).with_context(|| {
+                format!(
+                    "Error plotting {target}-coverageDiagram{}",
+                    cfg.io_args.output_format
+                )
+            })?
         }
     }
 

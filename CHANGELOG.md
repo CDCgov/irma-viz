@@ -8,7 +8,8 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
 
 ### Changed
 
-- Histogam plots in `{ctype}-heuristics.svg` now uses R-style pretty breaks as
+- Changed default output format to `.pdf`, this can be changed in `config.toml`
+- Histogam plots in `{ctype}-heuristics` now uses R-style pretty breaks as
   its binning strategy.
 - Moved heuristics thresholds from `config.toml`: `min_f`, `min_tcc`, `min_aq`,
   `min_conf` are now CLI arguments only with range validation
@@ -18,6 +19,10 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
 - Moved `tree height` to `[cluster_options]` in `config.toml`
 - Enabled all clustermap matrix types by default in `config.toml`: `expenrd`,
   `jaccard`, `mutuald`, and `njointp`
+
+### Added
+
+- Added pdf rendering capability
 
 ## [0.1.1] - 2026-07-16
 

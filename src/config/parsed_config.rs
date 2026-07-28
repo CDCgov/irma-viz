@@ -18,6 +18,8 @@ pub struct IOConfig {
     pub input_root: PathBuf,
     /// Path to the destination directory for created plots
     pub output_path: PathBuf,
+    /// Format of the output files
+    pub output_format: OutputFormat,
 }
 
 /// Plot toggles, both from the TOML and the parsed Config
@@ -205,7 +207,9 @@ pub struct ParsedConfig {
 
 impl ParsedConfig {
     pub fn merge_configs(toml: TOMLConfig, cli: CLIConfig) -> Result<Self> {
-        let io_args = cli.io_args.parse_io_args();
+        // takes the io args from the cli and pairs them with the output format
+        // from the TOML
+        let io_args = cli.io_args.parse_io_args(toml.output_options.output_format);
 
         let plot_toggles = PlotToggles::merge_plot_toggles(toml.plot_toggles, cli.enabled_plots);
 
@@ -231,5 +235,21 @@ impl ParsedConfig {
             plot_targets,
             plot_specific,
         })
+    }
+}
+
+#[derive(Debug, Deserialize, Copy, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputFormat {
+    Pdf,
+    Svg,
+}
+
+impl std::fmt::Display for OutputFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OutputFormat::Pdf => write!(f, ".pdf"),
+            OutputFormat::Svg => write!(f, ".svg"),
+        }
     }
 }

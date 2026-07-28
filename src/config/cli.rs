@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use clap::{ArgAction, Parser};
 
-use crate::config::parsed_config::IOConfig;
+use crate::config::{OutputFormat, parsed_config::IOConfig};
 
 /// These are for overriding settings from the config.toml
 #[derive(Debug, Parser)]
-#[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
+#[command(name = "irma-viz", version, about = "Render IRMA plots")]
 pub struct CLIConfig {
     #[command(flatten)]
     pub io_args: IOArgsCLI,
@@ -40,7 +40,7 @@ pub struct IOArgsCLI {
 impl IOArgsCLI {
     /// Parses IO args by setting `output_path` to `input_root/figures` if no
     /// `output_path` is otherwise specified
-    pub fn parse_io_args(self) -> IOConfig {
+    pub fn parse_io_args(self, output_format: OutputFormat) -> IOConfig {
         let IOArgsCLI {
             input_root,
             output_path,
@@ -51,6 +51,7 @@ impl IOArgsCLI {
         IOConfig {
             input_root,
             output_path,
+            output_format,
         }
     }
 }
