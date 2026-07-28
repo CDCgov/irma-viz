@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum};
 use serde::Deserialize;
 use std::{
     collections::BTreeSet,
@@ -10,25 +10,22 @@ use std::{
 /// These are for overriding settings from the config.toml
 #[derive(Debug, Parser)]
 #[command(name = "irma-viz", version, about = "Render IRMA plots to SVG")]
-pub struct Args {
+pub struct CLIConfig {
     #[command(flatten)]
-    pub io_args: IOArgs,
+    pub io_args: IOArgsCLI,
     /// Path to config TOML
     #[arg(long, short = 'c', default_value = "config.toml")]
     pub config: String,
     /// Which figures to plot
     #[command(flatten)]
-    pub enabled_plots: PlotToggleArgs,
-    /// Constants for heuristic plot
-    #[command(flatten)]
-    pub constants_args: ConstantsArgs,
+    pub enabled_plots: PlotToggleCLI,
     /// Plot specific args
     #[command(flatten)]
-    pub plot_specific_args: PlotSpecificArgs,
+    pub plot_specific_args: PlotSpecificCLI,
 }
 
 #[derive(Debug, Parser, Clone)]
-pub struct IOArgs {
+pub struct IOArgsCLI {
     /// Path to input directory that contains `tables/` and `matrices/`
     #[arg(long, short = 'i')]
     pub input_root: PathBuf,
@@ -38,21 +35,36 @@ pub struct IOArgs {
     pub output_path: Option<PathBuf>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Config {
-    // this is skipped for deserialization because we don't actually expect it
-    // in the toml, but we do want to keep it in the Config object
-    #[serde(skip)]
-    pub io_args: Option<IOArgs>,
-    pub plot_toggles: PlotToggles,
-    pub constants: ConstantsConfig,
-
-    #[serde(flatten)]
-    pub plot_specific: PlotSpecificConfig,
+impl IOArgsCLI {
+    /// Parses IO args by setting `output_path` to `input_root/figures` if no
+    /// `output_path` is otherwise specified
+    pub fn parse_io_args(self) -> IOConfig {
+        let IOArgsCLI {
+            input_root,
+            output_path,
+        } = self;
+        let output_path = output_path
+            .clone()
+            .unwrap_or_else(|| input_root.join("figures"));
+        IOConfig {
+            input_root,
+            output_path,
+        }
+    }
 }
 
-#[derive(Debug, Deserialize)]
+/// A parsed IO Config
+#[derive(Debug)]
+pub struct IOConfig {
+    /// The path to the root directory of an IRMA run, which expects a `tables`
+    /// and `matrices` directory within
+    pub input_root: PathBuf,
+    /// Path to the destination directory for created plots
+    pub output_path: PathBuf,
+}
+
+/// Plot toggles, both from the TOML and the parsed Config
+#[derive(Debug, Deserialize, Copy, Clone)]
 pub struct PlotToggles {
     pub read_percentages: bool,
     pub heuristics: bool,
@@ -60,12 +72,38 @@ pub struct PlotToggles {
     pub clustermap: bool,
 }
 
-// toggles for enabling/disabling to override the config
-// if these flags aren't used, the default will stick
-// e.g.
-//   `--coverage true`
-#[derive(Debug, Parser)]
-pub struct PlotToggleArgs {
+/// helper function for overriding TOML values with CLI values, if they exist
+fn merge_toml_cli_value<T>(toml_val: T, cli_val: Option<T>) -> T {
+    let mut result = toml_val;
+    if let Some(v) = cli_val {
+        result = v;
+    }
+    result
+}
+
+impl PlotToggles {
+    /// helper function for overriding TOML options with CLI options, if
+    /// applicable
+    pub fn merge_plot_toggles(toml: PlotToggles, cli: PlotToggleCLI) -> PlotToggles {
+        let read_percentages = merge_toml_cli_value(toml.read_percentages, cli.read_percentages);
+        let heuristics = merge_toml_cli_value(toml.heuristics, cli.heuristics);
+        let coverage = merge_toml_cli_value(toml.coverage, cli.coverage);
+        let clustermap = merge_toml_cli_value(toml.clustermap, cli.clustermap);
+
+        PlotToggles {
+            read_percentages,
+            heuristics,
+            coverage,
+            clustermap,
+        }
+    }
+}
+
+/// Toggles for enabling/disabling plot types within the CLI; overrides TOML
+/// options
+//   e.g. `--coverage true`
+#[derive(Debug, Parser, Copy, Clone)]
+pub struct PlotToggleCLI {
     #[arg(long)]
     pub read_percentages: Option<bool>,
     #[arg(long)]
@@ -76,54 +114,51 @@ pub struct PlotToggleArgs {
     pub clustermap: Option<bool>,
 }
 
-#[derive(Debug, Parser, Deserialize)]
-pub struct ConstantsArgs {
-    #[arg(long)]
-    pub min_aq: Option<f64>,
-    #[arg(long)]
-    pub min_f: Option<f64>,
-    #[arg(long)]
-    pub min_tcc: Option<f64>,
-    #[arg(long)]
-    pub min_conf: Option<f64>,
-    #[arg(long)]
-    pub tree_height: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ConstantsConfig {
+/// Threshold values for heuristics plots to be passed via CLI
+#[derive(Debug, Parser, Deserialize, Copy, Clone)]
+pub struct HeuristicsConfig {
+    /// Minimum average allele quality score heuristic for calling insertion &
+    /// single nucleotide variants
+    #[arg(long, default_value_t = 24.0)]
     pub min_aq: f64,
+    /// Minimum frequency heuristic for calling single nucleotide variants
+    #[arg(long, default_value_t = 0.008)]
     pub min_f: f64,
+    /// Minimum coverage depth heuristic (total coverage count) for calling
+    /// variants
+    #[arg(long, default_value_t = 100.0)]
     pub min_tcc: f64,
+    /// Minimum confidence not machine error for single nucleotide variants
+    #[arg(long, default_value_t = 0.8)]
     pub min_conf: f64,
-    pub tree_height: f64,
 }
 
+/// Plot specific Options within the TOML
 #[derive(Debug, Deserialize)]
-pub struct PlotSpecificConfig {
+pub struct PlotSpecificTOML {
     #[serde(rename = "coverage_options")]
     pub coverage: CoverageConfig,
 
     #[serde(rename = "percent_options")]
-    pub read_percent: ReadPercentConfig,
+    pub read_percent: ReadPercentTOML,
 
     #[serde(rename = "cluster_options")]
     pub cluster_config: ClusterConfig,
 }
 
+/// Plot specific optoins within the CLI
 #[derive(Debug, Parser)]
-pub struct PlotSpecificArgs {
-    #[arg(long, value_enum)]
-    pub coverage_variant_color: Option<CoverageColorOption>,
-
-    #[arg(long, value_enum)]
-    pub read_percentages_viz: Option<PercentVizOption>,
-
-    #[arg(long)]
+pub struct PlotSpecificCLI {
+    /// Whether the input reads are in a paired `fastq` format
+    #[arg(long, action = ArgAction::Set, required = true)]
     pub paired: Option<bool>,
 
+    /// Tree height for agglomerative clustering
     #[arg(long)]
-    pub cluster_option: Option<ClusterOption>,
+    pub tree_height: Option<f64>,
+
+    #[command(flatten)]
+    pub heuristics_args: HeuristicsConfig,
 }
 
 /// Controls whether coverage variant reference lines are colored by ACGT
@@ -155,21 +190,22 @@ pub enum ClusterOption {
 }
 
 /// Holds all config options for coverage plot
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct CoverageConfig {
     #[serde(rename = "variant_color")]
     pub color_option: CoverageColorOption,
 }
 
-/// Holds all config options for cluster plots
+/// Holds all config options for cluster plots, both in TOML and parsed forms
 #[derive(Debug, Deserialize)]
 pub struct ClusterConfig {
     pub cluster_option: ClusterOption,
     pub matrix_types: MatrixTypes,
+    pub tree_height: f64,
 }
 
 /// Possible matrix types for cluster plot input/output
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct MatrixTypes {
     pub expenrd: bool,
     pub jaccard: bool,
@@ -185,9 +221,9 @@ pub enum MatrixType {
     Njointp,
 }
 
-/// Converts the struct of bools created from the config.toml into a Vec of
-/// enabled matrix types for iteration
 impl MatrixTypes {
+    /// Converts the struct of bools created from the config.toml into a Vec of
+    /// enabled matrix types for iteration
     pub fn enabled_matrix_types(&self) -> Vec<MatrixType> {
         let mut enabled = Vec::new();
         if self.expenrd {
@@ -229,93 +265,24 @@ impl MatrixType {
 }
 
 /// All configuration options for read-percent plots
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Copy, Clone)]
+pub struct ReadPercentTOML {
+    pub viz_option: PercentVizOption,
+}
+
+/// Parsed read-percent plot options
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ReadPercentConfig {
     pub viz_option: PercentVizOption,
     pub paired: bool,
 }
 
-/// takes the config value and the override value (from CLI) and applies the
-/// override value on top of the default if applicable
-fn merge<T>(target: &mut T, override_val: Option<T>) {
-    if let Some(v) = override_val {
-        *target = v;
-    }
-}
-
-/// takes all default/config options and applies any applicable CLI arguments as overrides on top of them
-pub fn apply_cli_overrides(mut cfg: Config, args: &Args) -> Config {
-    cfg.io_args = Some(args.io_args.clone());
-
-    // plot overrides
-    merge(
-        &mut cfg.plot_toggles.read_percentages,
-        args.enabled_plots.read_percentages,
-    );
-    merge(
-        &mut cfg.plot_toggles.heuristics,
-        args.enabled_plots.heuristics,
-    );
-    merge(&mut cfg.plot_toggles.coverage, args.enabled_plots.coverage);
-    merge(
-        &mut cfg.plot_toggles.clustermap,
-        args.enabled_plots.clustermap,
-    );
-
-    // heuristics constants
-    merge(&mut cfg.constants.min_aq, args.constants_args.min_aq);
-    merge(&mut cfg.constants.min_f, args.constants_args.min_f);
-    merge(&mut cfg.constants.min_conf, args.constants_args.min_conf);
-    merge(&mut cfg.constants.min_tcc, args.constants_args.min_tcc);
-    merge(
-        &mut cfg.constants.tree_height,
-        args.constants_args.tree_height,
-    );
-
-    // plot-specific
-    merge(
-        &mut cfg.plot_specific.coverage.color_option,
-        args.plot_specific_args.coverage_variant_color,
-    );
-    merge(
-        &mut cfg.plot_specific.read_percent.viz_option,
-        args.plot_specific_args.read_percentages_viz,
-    );
-    merge(
-        &mut cfg.plot_specific.read_percent.paired,
-        args.plot_specific_args.paired,
-    );
-    merge(
-        &mut cfg.plot_specific.cluster_config.cluster_option,
-        args.plot_specific_args.cluster_option,
-    );
-
-    cfg
-}
-
-/// parses the config file into structs using the [toml] crate
-pub fn load_config(path: &str) -> Result<Config> {
+/// Parses the `config.toml`` file into structs using the [toml] crate
+pub fn load_config(path: &str) -> Result<TOMLConfig> {
     let s = fs::read_to_string(path).with_context(|| format!("Error reading \'{path}\'"))?;
-    let cfg: Config = toml::from_str(&s).with_context(|| format!("Error parsing \'{path}\'"))?;
+    let cfg: TOMLConfig =
+        toml::from_str(&s).with_context(|| format!("Error parsing \'{path}\'"))?;
     Ok(cfg)
-}
-
-impl Config {
-    /// Convenience function for getting IO args from [Config]
-    pub fn io_args(&self) -> Result<&IOArgs> {
-        self.io_args
-            .as_ref()
-            .context("IO arguments were not attached to the runtime config")
-    }
-
-    /// Convenience function for getting output path from [Config]
-    pub fn output_path(&self) -> Result<PathBuf> {
-        let io_args = self.io_args()?;
-        Ok(io_args
-            .output_path
-            .clone()
-            .unwrap_or_else(|| io_args.input_root.join("figures")))
-    }
 }
 
 const HEURISTICS_REQUIRED_SUFFIXES: &[&str] = &["-allAlleles.txt"];
@@ -424,24 +391,22 @@ impl PlotTargets {
     /// cross-check the targets for each plot type to see if there are targets
     /// missing from one plot but not another. Also checks if no targets were
     /// found for a given plot type (excluding clustermap)
-    pub fn check_missing_targets(&self, cfg: &Config) {
-        let toggles = &cfg.plot_toggles;
-
-        if toggles.heuristics && self.heuristics.is_empty() {
+    pub fn check_missing_targets(&self, plot_toggles: &PlotToggles, matrix_types: &MatrixTypes) {
+        if plot_toggles.heuristics && self.heuristics.is_empty() {
             eprintln!("Warning: heuristics plotting was enabled but no valid targets were found");
         }
-        if toggles.coverage && self.coverage.is_empty() {
+        if plot_toggles.coverage && self.coverage.is_empty() {
             eprintln!("Warning: coverage plotting was enabled but not valid targets were found");
         }
 
-        if toggles.heuristics && toggles.coverage {
+        if plot_toggles.heuristics && plot_toggles.coverage {
             warn_missing(&self.heuristics, &self.coverage, "heuristics", "coverage");
             warn_missing(&self.coverage, &self.heuristics, "coverage", "heuristics");
         }
 
         let clustermap_targets = self.clustermap.variant_targets();
 
-        if toggles.heuristics && toggles.clustermap {
+        if plot_toggles.heuristics && plot_toggles.clustermap {
             warn_missing(
                 &clustermap_targets,
                 &self.heuristics,
@@ -450,7 +415,7 @@ impl PlotTargets {
             );
         }
 
-        if toggles.coverage && toggles.clustermap {
+        if plot_toggles.coverage && plot_toggles.clustermap {
             warn_missing(
                 &clustermap_targets,
                 &self.coverage,
@@ -459,9 +424,8 @@ impl PlotTargets {
             );
         }
 
-        if toggles.clustermap {
-            self.clustermap
-                .check_missing_matrix_targets(&cfg.plot_specific.cluster_config.matrix_types);
+        if plot_toggles.clustermap {
+            self.clustermap.check_missing_matrix_targets(matrix_types);
         }
     }
 }
@@ -485,20 +449,20 @@ pub fn get_directory_paths(input_root: &Path) -> (PathBuf, PathBuf) {
     (input_root.join("tables"), input_root.join("matrices"))
 }
 
-pub fn resolve_targets(cfg: &Config) -> Result<PlotTargets> {
+/// get path to `tables` and `matrices` directories before calling to
+/// [discover_targets_by_plot_type]
+pub fn resolve_targets(
+    plot_toggles: &PlotToggles,
+    io_args: &IOConfig,
+    matrix_types: &MatrixTypes,
+) -> Result<PlotTargets> {
     // no plots needing targets enabled
-    if !(cfg.plot_toggles.heuristics || cfg.plot_toggles.coverage || cfg.plot_toggles.clustermap) {
+    if !(plot_toggles.heuristics || plot_toggles.coverage || plot_toggles.clustermap) {
         return Ok(PlotTargets::default());
     }
 
-    let io_args = cfg.io_args()?;
     let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
-    discover_targets_by_plot_type(
-        &table_path,
-        &matrix_path,
-        &cfg.plot_toggles,
-        &cfg.plot_specific.cluster_config.matrix_types,
-    )
+    discover_targets_by_plot_type(&table_path, &matrix_path, plot_toggles, matrix_types)
 }
 
 /// finds all valid targets for each given plot type and stores them seperately
@@ -569,7 +533,7 @@ fn discover_targets_by_plot_type(
     Ok(plot_targets)
 }
 
-/// Takes  a path to a directory and a list of suffixes and returns a BTreeSet
+/// Takes a path to a directory and a list of suffixes and returns a BTreeSet
 /// of possible targets that have files with these suffixes
 fn discover_candidate_targets(dir: &Path, suffixes: &[&str]) -> Result<BTreeSet<String>> {
     let entries = fs::read_dir(dir)
@@ -647,4 +611,137 @@ fn is_valid_target_name(target: &str) -> bool {
         && target
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TOMLConfig {
+    pub plot_toggles: PlotToggles,
+
+    #[serde(flatten)]
+    pub plot_specific: PlotSpecificTOML,
+}
+
+/// Parsed and merged plot-specific options
+#[derive(Debug)]
+pub struct PlotSpecificConfig {
+    pub coverage: CoverageConfig,
+    pub read_percent: ReadPercentConfig,
+    pub cluster_config: ClusterConfig,
+    pub heuristic: HeuristicsConfig,
+}
+
+fn validate_heuristics_thresholds(
+    heuristics: HeuristicsConfig,
+    toggles: PlotToggles,
+) -> Result<()> {
+    if !toggles.heuristics {
+        // don't need to bother validating, no heuristics plot being created
+        return Ok(());
+    }
+
+    validate_finite_range("min_f", heuristics.min_f, 0.0, 1.0)?;
+
+    validate_finite_range("min_conf", heuristics.min_conf, 0.0, 1.0)?;
+
+    validate_finite_range("min_aq", heuristics.min_aq, 0.0, 64.0)?;
+
+    if !heuristics.min_tcc.is_finite() || heuristics.min_tcc < 1.0 {
+        anyhow::bail!(
+            "Error: Value min_tcc must be finite and greater than or equal to 1, {} was provided",
+            heuristics.min_tcc
+        );
+    }
+
+    Ok(())
+}
+
+fn validate_finite_range(name: &str, value: f64, min: f64, max: f64) -> Result<()> {
+    if !value.is_finite() || value < min || value > max {
+        anyhow::bail!(
+            "Value {name} must be finite and between {min} and {max}, {value} was provided"
+        );
+    }
+    Ok(())
+}
+
+impl PlotSpecificConfig {
+    fn merge_plot_specifics(
+        toml: PlotSpecificTOML,
+        cli: PlotSpecificCLI,
+        toggles: PlotToggles,
+    ) -> Result<Self> {
+        // coverage options are only provided via TOML
+        let coverage = toml.coverage;
+
+        // heuristics options are only provided via CLI
+        let heuristic = cli.heuristics_args;
+        validate_heuristics_thresholds(heuristic, toggles)?;
+
+        let read_percent = ReadPercentConfig {
+            // viz option is provided via TOML
+            viz_option: toml.read_percent.viz_option,
+            // paired is provided via CLI. we can unwrap here because Clap
+            // guarantees the argument is present
+            paired: cli.paired.unwrap(),
+        };
+        // = toml.plot_specific.read_percent;
+
+        let cluster_config = ClusterConfig {
+            // cluster option is provided via TOML
+            cluster_option: toml.cluster_config.cluster_option,
+            // matrix types are provided via TOML
+            matrix_types: toml.cluster_config.matrix_types,
+            // tree height comes from TOML + CLI
+            tree_height: merge_toml_cli_value(toml.cluster_config.tree_height, cli.tree_height),
+        };
+
+        validate_finite_range("tree_height", cluster_config.tree_height, 0.0, 1.0)?;
+
+        Ok(PlotSpecificConfig {
+            coverage,
+            read_percent,
+            cluster_config,
+            heuristic,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct ParsedConfig {
+    pub plot_toggles: PlotToggles,
+    pub io_args: IOConfig,
+    pub plot_targets: PlotTargets,
+    pub plot_specific: PlotSpecificConfig,
+}
+
+impl ParsedConfig {
+    pub fn merge_configs(toml: TOMLConfig, cli: CLIConfig) -> Result<Self> {
+        let io_args = cli.io_args.parse_io_args();
+
+        let plot_toggles = PlotToggles::merge_plot_toggles(toml.plot_toggles, cli.enabled_plots);
+
+        let plot_specific = PlotSpecificConfig::merge_plot_specifics(
+            toml.plot_specific,
+            cli.plot_specific_args,
+            plot_toggles,
+        )?;
+
+        // get valid plot targets
+        let plot_targets = resolve_targets(
+            &plot_toggles,
+            &io_args,
+            &plot_specific.cluster_config.matrix_types,
+        )?;
+        // check and warn of missing targets based on enabled plots and discovered targets
+        plot_targets
+            .check_missing_targets(&plot_toggles, &plot_specific.cluster_config.matrix_types);
+
+        Ok(ParsedConfig {
+            plot_toggles,
+            io_args,
+            plot_targets,
+            plot_specific,
+        })
+    }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    config::{Config, CoverageColorOption},
+    config::{CoverageColorOption, ParsedConfig},
     data::{AllVariants, Coverage, PairingStats},
     plots::{render_multiplot, render_plot},
 };
@@ -46,7 +46,7 @@ pub fn plot_coverage(
     coverage: Coverage,
     variants: AllVariants,
     pairing_stats: PairingStats,
-    cfg: &Config,
+    cfg: &ParsedConfig,
     target: &str,
 ) -> Result<()> {
     const OFFSET: f64 = 20.5;
@@ -157,11 +157,11 @@ pub fn plot_coverage(
             .with_layouts(vec![coverage_layout, bar_layout])
             .render();
 
-        render_multiplot(&scene, cfg.output_path()?, &filename)
+        render_multiplot(&scene, &cfg.io_args.output_path, &filename)
     } else {
         render_plot(
             (&filename, (coverage_plot, coverage_layout)),
-            cfg.output_path()?,
+            &cfg.io_args.output_path,
         )
     }
 }

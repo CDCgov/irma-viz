@@ -1,16 +1,17 @@
-use crate::{config::Config, data::AllAlleles, plots::render_multiplot};
+use crate::{ParsedConfig, config::HeuristicsConfig, data::AllAlleles, plots::render_multiplot};
 use anyhow::{Context, Result};
 use kuva::{plot::Histogram, prelude::*};
 
 const NUM_BINS: usize = 50; // from IRMA
 const SAMPLES: usize = 1000;
 
-pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> Result<()> {
-    // constants
-    let min_aq = cfg.constants.min_aq;
-    let min_f = cfg.constants.min_f;
-    let min_tcc = cfg.constants.min_tcc;
-    let min_conf = cfg.constants.min_conf;
+pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str) -> Result<()> {
+    let HeuristicsConfig {
+        min_aq,
+        min_f,
+        min_tcc,
+        min_conf,
+    } = cfg.plot_specific.heuristic;
 
     // Average allele quality density
     let average_qualities = all_alleles.average_qualities;
@@ -104,7 +105,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &Config, target: &str) -> R
         .render();
 
     let filename = format!("{target}-heuristics.svg");
-    render_multiplot(&scene, cfg.output_path()?, filename.as_str())
+    render_multiplot(&scene, &cfg.io_args.output_path, filename.as_str())
 }
 
 fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {

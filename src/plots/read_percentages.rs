@@ -1,5 +1,5 @@
 use crate::{
-    config::Config,
+    config::ParsedConfig,
     data::{ReadCounts, SankeyVec},
     plots::{render_multiplot, render_plot},
 };
@@ -10,10 +10,13 @@ use kuva::{
     prelude::{Figure, Layout, Plot},
 };
 
-pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &Config) -> Result<()> {
+pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &ParsedConfig) -> Result<()> {
     let (plot, layout) = kuva_sankey(sankey_vec);
 
-    render_plot(("READ_PERCENTAGES.svg", (plot, layout)), cfg.output_path()?)
+    render_plot(
+        ("READ_PERCENTAGES.svg", (plot, layout)),
+        &cfg.io_args.output_path,
+    )
 }
 
 fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
@@ -26,7 +29,7 @@ fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
-pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
+pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()> {
     let paired = cfg.plot_specific.read_percent.paired;
 
     let pal = Palette::wong();
@@ -191,7 +194,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &Config) -> Result<()> {
         .with_layouts(layouts)
         .render();
 
-    render_multiplot(&scene, cfg.output_path()?, filename)
+    render_multiplot(&scene, &cfg.io_args.output_path, filename)
 }
 
 fn kuva_pie(

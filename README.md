@@ -41,15 +41,19 @@ cargo build --profile prod
 ## Run
 
 ```bash
-cargo run -- --input-root path/to/irma-run
+cargo run -- --input-root path/to/irma-run --min-aq 24 --min-f 0.008 --min-tcc 100
 ```
 
 The binary loads a `TOML` config, then applies CLI overrides on top. The path to
-the config `TOML` is assumed to be in the current folder, unless otherwise
-specified.
+the config `TOML` is assumed to be in the current working directory, unless
+otherwise specified.
 
 The `--input-root` (`-i`) must be specified, and should be the base path of the
 `IRMA` run, where `IRMA-viz` expects a `matrices/` and `tables/` directory.
+
+Since the heuristics thresholds `--min-aq`, `--min-f`, `--min-tcc`, and
+`--min-conf` are expected to vary by IRMA module, they are passed via CLI. If
+omitted, IRMA-viz uses the defaults listed below.
 
 The output path will be in `input-root/figures` unless otherwise specified.
 
@@ -67,24 +71,30 @@ The output path will be in `input-root/figures` unless otherwise specified.
 
 ## Plot-Specific CLI Arguments
 
-These are CLI overrides for arguments within the configuration for specific plots.
+These options are provided by CLI. The heuristics parameters are used only for
+plot reference lines and axis boundaries; changing them does not recalculate the
+underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 
-Note that for plotting purposes, for the four heuristics parameters, these do
-not affect the calculations or data in the plots, and are used solely for
-reference lines and/or axis boundaries. These defaults are from `IRMA`'s `FLU`
-module.
+| Parameter       | Plot             | Default | Kind    | Description                                                                                              |
+| --------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `--min-aq`      | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants        |
+| `--min-f`       | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                       |
+| `--min-tcc`     | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                             |
+| `--min-conf`    | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                      |
+| `--paired`      | read-percentages | true    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot |
+| `--tree-height` | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                 |
 
-| Parameter                  | Plot             | Default      | Kind                      | Description                                                                                                                                                             |
-| -------------------------- | ---------------- | ------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--min-aq`                 | heuristics       | 24           | [0,64]                    | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                       |
-| `--min-f`                  | heuristics       | 0.008        | [0,1]                     | Minimum frequency heuristic for calling single nucleotide variants                                                                                                      |
-| `--min-tcc`                | heuristics       | 100          | ≥ 1                       | Minimum coverage depth heuristic (tool coverage count) for calling variants                                                                                             |
-| `--min-conf`               | heuristics       | 0.8          | [0,1]                     | Minimum confidence not machine error for single nucleotide variants                                                                                                     |
-| `--coverage-variant-color` | coverage         | nucleotide   | "nucleotide", "frequency" | Controls colors for vertical reference line for each variant, which are colored either based on the nucleotide identity of the variant, or the frequency of the variant |
-| `--read-percentages-viz`   | read-percentages | pie          | "pie", "sankey"           | Chooses between a dashboard of pie charts or a sankey flow diagram to describe the classifications of the reads throughout the IRMA run                                 |
-| `--paired`                 | read-percentages | true         | boolean                   | Whether or not the sample was from paired-end data. Only affects the description text on the read-percentages plot                                                      |
-| `--cluster-option`         | clustermap       | "clustermap" | "clustermap", "tree"      | Chooses between a clustermap or a phylogenetic tree with a heatmap for the clustermap plot                                                                              |
-| `--tree-height`            | clustermap       | 0.78         | [0,1]                     | Tree height for agglomerative clustering of variant sites, if "tree" is selected for `--cluster-option`                                                                 |
+## Plot-Specific TOML Options
+
+These options are configured in `config.toml`.
+
+| Section              | Option           | Values                                                      | Description                                                             |
+| -------------------- | ---------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `[coverage_options]` | `variant_color`  | `"nucleotide"`, `"frequency"`                               | Colors variant coverage annotations by nucleotide identity or frequency |
+| `[percent_options]`  | `viz_option`     | `"pie"`, `"sankey"`                                         | Chooses the read-percentages visualization style                        |
+| `[cluster_options]`  | `cluster_option` | `"clustermap"`, `"tree"`                                    | Chooses the clustermap layout style                                     |
+| `[cluster_options]`  | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp` | Selects which clustermap matrix types to generate                       |
+| `[cluster_options]`  | `tree_height`    | number from 0 to 1                                          | Default tree height, overridden by `--tree-height`                      |
 
 ## Plots
 
@@ -92,12 +102,14 @@ module.
 
 The read percentages figure shows a summary of all ctypes and their
 categorizations within different steps of the entire IRMA run, displayed across
-three pie charts. Note the `--paired` boolean flag affects the description text
-for the pie charts.
+three pie charts. Note the `--paired` boolean option affects the description
+text for the pie charts.
 
 ![ReadPercentages_pie](demo/READ_PERCENTAGES.svg)
 
-The `--read-percentages-viz sankey` option shows a similar breakdown, aggregated into a single sankey flow diagram.
+A sankey flow diagram showing a similar breakdown can be enabled instead of the
+pie charts by setting `viz_option = "sankey"` under `[percent_options]` in
+`config.toml`.
 
 ![ReadPercentages_sankey](demo/READ_PERCENTAGES_sankey.svg)
 
@@ -117,10 +129,14 @@ bandwidth selection.
 5. Histogram of coverage depth
 6. Histogram of confidence that an allele is not a machine error
 
-`--min-aq` places a vertical reference line for average allele quality (1) and serves as the x-minimum for the zoomed quality plot (2)
-`--min-f` places a vertical reference line for the observed allele frequency (3) and serves as the x-maximum for the zoomed frequency plot (4)
-`--min-tcc` chooses where to add a vertical reference line for the coverage histogram (5)
-`--min-conf` chooses where to add a vertical reference line for the confidence histogram (6)
+- `--min-aq` places a vertical reference line for average allele quality (1) and
+serves as the x-maximum for the zoomed quality plot (2).
+- `--min-f` places a vertical reference line for the observed allele frequency
+(3) and serves as the x-maximum for the zoomed frequency plot (4).
+- `--min-tcc` chooses where to add a vertical reference line for the coverage
+histogram (5).
+- `--min-conf` chooses where to add a vertical reference line for the confidence
+histogram (6).
 
 These thresholds are shown for interpretation only: changing the corresponding
 CLI arguments updates the reference lines and axis bounds in the plot, but does
@@ -133,7 +149,8 @@ site, for example `43C` and `817T`. Each cell encodes the similarity between the
 two sites. The lower the value, the higher the similarity between the sites, and
 the darker the cell is colored.
 
-There are up to four possible similarity matrices that IRMA can export for a given ctype, giving four possible heatmaps:
+There are up to four possible similarity matrices that IRMA can export for a
+given ctype, giving four possible heatmaps:
 
 <!-- markdownlint-configure-file {"MD033": {"allowed_elements": ["img"]}} -->
 
@@ -152,21 +169,25 @@ For these calculations:
 
 Different matrices/clustermaps can be enabled or disabled within the `config.toml`.
 
+The `tree_height` option under `[cluster_options]` in `config.toml`, overridden
+by the `--tree-height` CLI flag, sets the tree height for agglomerative
+clustering of variant sites.
+
 ![A_NA_N1_clustermap](demo/A_NA_N1-EXPENRD.svg)
 
-The `--cluster-option tree` option does not change the heatmap, but adds more
-focus to the phylogenetic tree paired with the heatmap. This version of the
-dendrogram features scaled branch lengths, and the reference line shows the
-cutoff for where variants are clustered together.
+Setting `cluster_option = "tree"` under `[cluster_options]` does not change the
+heatmap values, but adds more focus to the phylogenetic tree paired with the
+heatmap. This version of the dendrogram features scaled branch lengths, and the
+reference line shows the cutoff where variants are clustered together.
 
 ![A_NA_N1_clustermap_tree](demo/A_NA_N1-EXPENRD_tree.svg)
 
 ### Coverage
 
 Creates a coverage line plot showing the volume of reads covering each position
-along the length of the ctype. If two or more variants are found for the
-ctype, an additional bar plot will be created showing the relative frequencies
-of the variants.
+along the length of the ctype. When variants are available and
+`variant_color = "nucleotide"`, an additional bar plot is created showing their
+relative frequencies.
 
 The axis labels on the bar chart provide the original nucleotide identity of the
 allele, followed by the variant nucleotide, and the number on the bar itself
@@ -174,10 +195,11 @@ represents the position of the allele. For example, a bar labeled `A2G` with
 `38` on the bar represents an `A` being replaced with a `G` at position 38. The
 colors of the bars and their relevant reference lines are based on the
 nucleotide identity of the variant. The `exp_err.` bar and horizontal reference
-line shows the threshold frequency for where variants are called, rather than
+line show the threshold frequency for where variants are called, rather than
 assumed to be errors.
 
-If one or fewer variants are present, no bar graph will be generated.
+When `variant_color = "frequency"`, variant reference lines are colored by
+observed frequency and the variant-frequency bar plot is not generated.
 
 ![A_NA_N1-coverage](demo/A_NA_N1-coverageDiagram.svg)
 

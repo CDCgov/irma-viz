@@ -4,21 +4,13 @@ clustermap = true
 heuristics = true
 coverage = true
 
-[constants]
-# These are constants that affect the ranges of the heuristic plots. They are overridden in the configs for each IRMA module
-min_aq = 24     # minimum average variant quality, does not apply to deletions
-min_f = 0.008   # minimum frequency for single nucleotide variants
-min_tcc = 100   # minimum non-ambiguous column coverage
-min_conf = 0.8 # minimum confidence not machine error
-tree_height = 0.78 # Tree height for agglomerative clustering of variant sites, if "tree" is selected
-
 [coverage_options]
 variant_color = "nucleotide" # either "nucleotide" for original configuration, or "frequency" for possible change
 
 [percent_options]
 viz_option = "pie" # either "sankey" or "pie"
-paired = true
 
 [cluster_options]
 cluster_option = "clustermap" # either "clustermap" or "tree"
-matrix_types = { expenrd = true, jaccard = false, mutuald = false, njointp = false }
+matrix_types = { expenrd = true, jaccard = true, mutuald = true, njointp = true }
+tree_height = 0.78 # Tree height for agglomerative clustering of variant sites

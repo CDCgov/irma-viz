@@ -2,8 +2,7 @@
 
 use crate::{
     config::{
-        Args, ClusterOption, PercentVizOption, apply_cli_overrides, get_directory_paths,
-        load_config, resolve_targets,
+        CLIConfig, ClusterOption, ParsedConfig, PercentVizOption, get_directory_paths, load_config,
     },
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     plots::{
@@ -21,22 +20,14 @@ mod data;
 mod plots;
 
 fn main() -> Result<()> {
-    let cli = Args::parse();
-
-    let cfg =
+    let cli = CLIConfig::parse();
+    let toml =
         load_config(&cli.config).with_context(|| format!("Loading config from {}", cli.config))?;
+    let cfg = ParsedConfig::merge_configs(toml, cli)?;
 
-    let cfg = apply_cli_overrides(cfg, &cli);
+    let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
 
-    let plot_targets = resolve_targets(&cfg)?;
-    plot_targets.check_missing_targets(&cfg);
-
-    let io_args = cfg.io_args()?;
-    let (table_path, matrix_path) = get_directory_paths(&io_args.input_root);
-    let output_path = cfg.output_path()?;
-
-    // create output directory
-    if let output_dir = std::path::Path::new(&output_path)
+    if let output_dir = std::path::Path::new(&cfg.io_args.output_path)
         && !output_dir.as_os_str().is_empty()
     {
         fs::create_dir_all(output_dir)?;
@@ -81,7 +72,7 @@ fn main() -> Result<()> {
         }
     }
 
-    for target in &plot_targets.heuristics {
+    for target in &cfg.plot_targets.heuristics {
         let all_alleles_path = table_path.join(format!("{target}-allAlleles.txt"));
         let allele_data = AllAlleles::import_from_file(&all_alleles_path).with_context(|| {
             format!(
@@ -94,7 +85,7 @@ fn main() -> Result<()> {
             .with_context(|| format!("Error plotting {target}-heuristics.svg"))?
     }
 
-    for target in plot_targets.variant_targets() {
+    for target in cfg.plot_targets.variant_targets() {
         let variants_path = table_path.join(format!("{target}-variants.txt"));
         let variants = AllVariants::import_from_file(&variants_path).with_context(|| {
             format!(
@@ -110,7 +101,8 @@ fn main() -> Result<()> {
                 .matrix_types
                 .enabled_matrix_types()
             {
-                if plot_targets
+                if cfg
+                    .plot_targets
                     .clustermap
                     .targets_for(matrix_type)
                     .contains(&target)
@@ -147,7 +139,7 @@ fn main() -> Result<()> {
             }
         }
 
-        if plot_targets.coverage.contains(&target) {
+        if cfg.plot_targets.coverage.contains(&target) {
             let coverage_path = table_path.join(format!("{target}-coverage.txt"));
             let coverage = Coverage::import_from_file(&coverage_path).with_context(|| {
                 format!(

@@ -1,5 +1,5 @@
 use crate::{
-    config::Config,
+    ParsedConfig,
     data::SquareMatrix,
     plots::{render_multiplot, render_plot},
 };
@@ -41,7 +41,7 @@ pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
 
 pub fn plot_clustermap(
     data: SquareMatrix,
-    cfg: &Config,
+    cfg: &ParsedConfig,
     target: &str,
     matrix_type: &str,
 ) -> Result<()> {
@@ -50,16 +50,19 @@ pub fn plot_clustermap(
         .with_title(format!("Variant site clusters, {target}-{matrix_type}.sqm"));
 
     let filename = format!("{target}-{matrix_type}.svg");
-    render_plot((filename.as_str(), (plot, layout)), cfg.output_path()?)
+    render_plot(
+        (filename.as_str(), (plot, layout)),
+        &cfg.io_args.output_path,
+    )
 }
 
 pub fn plot_heat_phylo(
     data: SquareMatrix,
-    cfg: &Config,
+    cfg: &ParsedConfig,
     target: &str,
     matrix_type: &str,
 ) -> Result<()> {
-    let tree_height = cfg.constants.tree_height;
+    let tree_height = cfg.plot_specific.cluster_config.tree_height;
     let line_placement = 1.0 - tree_height * 0.93;
 
     let (dendrogram, leaf_order) = kuva_dendro(&data);
@@ -86,7 +89,7 @@ pub fn plot_heat_phylo(
         .with_spacing(0.0)
         .render();
 
-    render_multiplot(&scene, cfg.output_path()?, &filename)
+    render_multiplot(&scene, &cfg.io_args.output_path, &filename)
 }
 
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
