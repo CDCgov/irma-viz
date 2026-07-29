@@ -73,7 +73,7 @@ pub struct PlotToggleCLI {
 
 /// Threshold values for heuristics plots to be passed via CLI
 #[derive(Debug, Parser, Copy, Clone)]
-pub struct HeuristicsConfig {
+pub struct HeuristicsCLI {
     /// Minimum average allele quality score heuristic for calling insertion &
     /// single nucleotide variants
     #[arg(long, default_value_t = 24.0)]
@@ -102,5 +102,5 @@ pub struct PlotSpecificCLI {
     pub tree_height: Option<f64>,
 
     #[command(flatten)]
-    pub heuristics_args: HeuristicsConfig,
+    pub heuristics_args: HeuristicsCLI,
 }

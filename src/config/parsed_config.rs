@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use serde::Deserialize;
 
 use crate::config::{
-    cli::{CLIConfig, HeuristicsConfig, PlotSpecificCLI, PlotToggleCLI},
+    cli::{CLIConfig, HeuristicsCLI, PlotSpecificCLI, PlotToggleCLI},
     matrices::MatrixTypes,
     targets::{PlotTargets, resolve_targets},
-    toml::{PlotSpecificTOML, TOMLConfig},
+    toml::{HeuristicsPlots, PlotSpecificTOML, TOMLConfig},
 };
 
 /// A parsed IO Config
@@ -122,10 +122,7 @@ pub struct PlotSpecificConfig {
     pub heuristic: HeuristicsConfig,
 }
 
-fn validate_heuristics_thresholds(
-    heuristics: HeuristicsConfig,
-    toggles: PlotToggles,
-) -> Result<()> {
+fn validate_heuristics_thresholds(heuristics: HeuristicsCLI, toggles: PlotToggles) -> Result<()> {
     if !toggles.heuristics {
         // don't need to bother validating, no heuristics plot being created
         return Ok(());
@@ -166,8 +163,24 @@ impl PlotSpecificConfig {
         let coverage = toml.coverage;
 
         // heuristics options are only provided via CLI
-        let heuristic = cli.heuristics_args;
-        validate_heuristics_thresholds(heuristic, toggles)?;
+        validate_heuristics_thresholds(cli.heuristics_args, toggles)?;
+        let HeuristicsCLI {
+            min_aq,
+            min_f,
+            min_tcc,
+            min_conf,
+        } = cli.heuristics_args;
+        let enabled_plots = toml.heuristics;
+        if !enabled_plots.check_any_enabled() && toggles.heuristics {
+            bail!("Error: Heuristics plot enabled but no heuristics subplots were enabled")
+        }
+        let heuristic = HeuristicsConfig {
+            min_aq,
+            min_f,
+            min_tcc,
+            min_conf,
+            enabled_plots,
+        };
 
         let read_percent = ReadPercentConfig {
             // viz option is provided via TOML
@@ -252,4 +265,20 @@ impl std::fmt::Display for OutputFormat {
             OutputFormat::Svg => write!(f, ".svg"),
         }
     }
+}
+
+/// Threshold values for heuristics plots to be passed via CLI
+#[derive(Debug, Copy, Clone)]
+pub struct HeuristicsConfig {
+    /// Minimum average allele quality score heuristic for calling insertion &
+    /// single nucleotide variants
+    pub min_aq: f64,
+    /// Minimum frequency heuristic for calling single nucleotide variants
+    pub min_f: f64,
+    /// Minimum coverage depth heuristic (total coverage count) for calling
+    /// variants
+    pub min_tcc: f64,
+    /// Minimum confidence not machine error for single nucleotide variants
+    pub min_conf: f64,
+    pub enabled_plots: HeuristicsPlots,
 }

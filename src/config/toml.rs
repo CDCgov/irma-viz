@@ -37,6 +37,9 @@ pub fn load_config(path: &str) -> Result<TOMLConfig> {
 /// Plot specific Options within the TOML
 #[derive(Debug, Deserialize)]
 pub struct PlotSpecificTOML {
+    #[serde(rename = "heuristics_options")]
+    pub heuristics: HeuristicsPlots,
+
     #[serde(rename = "coverage_options")]
     pub coverage: CoverageConfig,
 
@@ -51,4 +54,25 @@ pub struct PlotSpecificTOML {
 #[derive(Debug, Deserialize, Copy, Clone)]
 pub struct ReadPercentTOML {
     pub viz_option: PercentVizOption,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct HeuristicsPlots {
+    pub allele_quality: bool,
+    pub quality_subplot: bool,
+    pub allele_frequency: bool,
+    pub frequency_subplot: bool,
+    pub coverage_depth_hist: bool,
+    pub confidence_hist: bool,
+}
+
+impl HeuristicsPlots {
+    pub fn check_any_enabled(&self) -> bool {
+        self.allele_quality
+            || self.quality_subplot
+            || self.allele_frequency
+            || self.frequency_subplot
+            || self.coverage_depth_hist
+            || self.confidence_hist
+    }
 }

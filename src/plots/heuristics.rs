@@ -15,97 +15,126 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
         min_f,
         min_tcc,
         min_conf,
+        enabled_plots,
     } = cfg.plot_specific.heuristic;
 
-    // Average allele quality density
-    let average_qualities = all_alleles.average_qualities;
-    if average_qualities.data.is_empty() {
-        anyhow::bail!("Density plot has no data");
+    let mut plots = Vec::new();
+    let mut layouts = Vec::new();
+
+    if enabled_plots.allele_quality {
+        let average_qualities = all_alleles.average_qualities.clone();
+        if average_qualities.data.is_empty() {
+            anyhow::bail!("Error: Could not create allele quality heuristics plot; no data found.");
+        }
+        let (aq_density, min_y, max_y) = kuva_dens(
+            &average_qualities.data,
+            average_qualities.min,
+            average_qualities.max,
+        );
+        let aq_dens_layout = Layout::auto_from_plots(&aq_density)
+            .with_title("Density of average allele quality")
+            .with_x_axis_min(average_qualities.min)
+            .with_x_axis_max(average_qualities.max)
+            .with_y_axis_min(min_y - min_y * 0.05)
+            .with_y_axis_max(max_y + max_y * 0.05)
+            .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
+            .with_show_grid(false);
+
+        plots.push(aq_density);
+        layouts.push(aq_dens_layout);
     }
-    let (aq_density, min_y, max_y) = kuva_dens(
-        &average_qualities.data,
-        average_qualities.min,
-        average_qualities.max,
-    );
-    let aq_dens_layout = Layout::auto_from_plots(&aq_density)
-        .with_title("Density of average allele quality")
-        .with_x_axis_min(average_qualities.min)
-        .with_x_axis_max(average_qualities.max)
-        .with_y_axis_min(min_y - min_y * 0.05)
-        .with_y_axis_max(max_y + max_y * 0.05)
-        .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
-        .with_show_grid(false);
 
-    // Limited x range average allele quality density
-    let (limited_aq_density, min_y, max_y) =
-        kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
-    let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
-        .with_title(format!("to {min_aq}"))
-        .with_x_axis_min(average_qualities.min)
-        .with_x_axis_max(min_aq)
-        .with_y_axis_min(min_y - min_y * 0.05)
-        .with_y_axis_max(max_y + max_y * 0.05)
-        .with_show_grid(false);
+    if enabled_plots.quality_subplot {
+        let average_qualities = all_alleles.average_qualities;
+        if average_qualities.data.is_empty() {
+            anyhow::bail!("Error: Could not create allele quality subplot; no data found.");
+        }
 
-    // Observed frequency density
-    let frequencies = all_alleles.frequencies;
-    let (freq_density, min_y, max_y) = kuva_dens(&frequencies, 0.0, 0.1);
-    let freq_dens_layout = Layout::auto_from_plots(&freq_density)
-        .with_title("Density of observed frequency (to 10%)")
-        .with_x_axis_min(0.0)
-        .with_x_axis_max(0.1)
-        .with_y_axis_min(min_y - min_y * 0.05)
-        .with_y_axis_max(max_y + max_y * 0.05)
-        .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
-        .with_show_grid(false);
+        let (limited_aq_density, min_y, max_y) =
+            kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
+        let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
+            .with_title(format!("to {min_aq}"))
+            .with_x_axis_min(average_qualities.min)
+            .with_x_axis_max(min_aq)
+            .with_y_axis_min(min_y - min_y * 0.05)
+            .with_y_axis_max(max_y + max_y * 0.05)
+            .with_show_grid(false);
 
-    // Limited x range observed frequency density
-    let (lim_freq_dens, min_y, max_y) = kuva_dens(&frequencies, 0.0, min_f);
-    let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
-        .with_title(format!("to {min_f}"))
-        .with_x_axis_min(0.0)
-        .with_x_axis_max(min_f)
-        .with_y_axis_min(min_y - min_y * 0.001)
-        .with_y_axis_max(max_y + max_y * 0.001)
-        .with_show_grid(false);
+        plots.push(limited_aq_density);
+        layouts.push(lim_aq_dens_layout);
+    }
 
-    // Coverage histogram
-    let cov_hist = kuva_histogram(all_alleles.totals.data, NUM_BINS)
-        .with_context(|| "coverage histogram subplot")?;
-    let cov_hist_layout = Layout::auto_from_plots(&cov_hist)
-        .with_x_axis_min(0.0)
-        .with_x_axis_max(all_alleles.totals.upper_quantile + 1.0)
-        .with_reference_line(ReferenceLine::vertical(min_tcc).with_dasharray("none"))
-        .with_show_grid(false)
-        .with_title("Histogram of coverage (Depth <= 20% Quantile)");
+    if enabled_plots.allele_frequency {
+        let frequencies = all_alleles.frequencies.clone();
+        let (freq_density, min_y, max_y) = kuva_dens(&frequencies, 0.0, 0.1);
+        let freq_dens_layout = Layout::auto_from_plots(&freq_density)
+            .with_title("Density of observed frequency (to 10%)")
+            .with_x_axis_min(0.0)
+            .with_x_axis_max(0.1)
+            .with_y_axis_min(min_y - min_y * 0.05)
+            .with_y_axis_max(max_y + max_y * 0.05)
+            .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
+            .with_show_grid(false);
 
-    // Machine error confidence histogram
-    let confidence_values = all_alleles.confidence_not_mac_errs;
-    let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
-        .with_context(|| "confidence histogram subplot")?;
-    let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
-        .with_reference_line(ReferenceLine::vertical(min_conf).with_dasharray("none"))
-        .with_show_grid(false)
-        .with_title("Histogram of confidence of not machine error, non-zero");
+        plots.push(freq_density);
+        layouts.push(freq_dens_layout);
+    }
+
+    if enabled_plots.frequency_subplot {
+        let frequencies = all_alleles.frequencies;
+
+        let (lim_freq_dens, min_y, max_y) = kuva_dens(&frequencies, 0.0, min_f);
+        let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
+            .with_title(format!("to {min_f}"))
+            .with_x_axis_min(0.0)
+            .with_x_axis_max(min_f)
+            .with_y_axis_min(min_y - min_y * 0.001)
+            .with_y_axis_max(max_y + max_y * 0.001)
+            .with_show_grid(false);
+
+        plots.push(lim_freq_dens);
+        layouts.push(lim_freq_dens_layout);
+    }
+
+    if enabled_plots.coverage_depth_hist {
+        let cov_hist = kuva_histogram(all_alleles.totals.data, NUM_BINS)
+            .with_context(|| "coverage histogram subplot")?;
+        let cov_hist_layout = Layout::auto_from_plots(&cov_hist)
+            .with_x_axis_min(0.0)
+            .with_x_axis_max(all_alleles.totals.upper_quantile + 1.0)
+            .with_reference_line(ReferenceLine::vertical(min_tcc).with_dasharray("none"))
+            .with_show_grid(false)
+            .with_title("Histogram of coverage (Depth <= 20% Quantile)");
+
+        plots.push(cov_hist);
+        layouts.push(cov_hist_layout);
+    }
+
+    if enabled_plots.confidence_hist {
+        let confidence_values = all_alleles.confidence_not_mac_errs;
+        let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
+            .with_context(|| "confidence histogram subplot")?;
+        let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
+            .with_reference_line(ReferenceLine::vertical(min_conf).with_dasharray("none"))
+            .with_show_grid(false)
+            .with_title("Histogram of confidence of not machine error, non-zero");
+
+        plots.push(confidence_histogram);
+        layouts.push(confidence_hist_layout);
+    }
+
+    let cols = if plots.len() > 1 { 2 } else { 1 };
+    let rows = match plots.len() / 2 {
+        1 | 2 => 1,
+        3 | 4 => 2,
+        5 | 6 => 3,
+        _ => unreachable!(),
+    };
 
     // Multi-Plot
-    let scene = Figure::new(3, 2)
-        .with_plots(vec![
-            aq_density,
-            limited_aq_density,
-            freq_density,
-            lim_freq_dens,
-            cov_hist,
-            confidence_histogram,
-        ])
-        .with_layouts(vec![
-            aq_dens_layout,
-            lim_aq_dens_layout,
-            freq_dens_layout,
-            lim_freq_dens_layout,
-            cov_hist_layout,
-            confidence_hist_layout,
-        ])
+    let scene = Figure::new(rows, cols)
+        .with_plots(plots)
+        .with_layouts(layouts)
         .render();
 
     let filename = format!("{target}-heuristics");

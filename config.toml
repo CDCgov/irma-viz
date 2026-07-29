@@ -7,6 +7,9 @@ clustermap = true
 heuristics = true
 coverage = true
 
+[heuristics_options]
+enabled_plots = { allele_quality = true, quality_subplot = true, allele_frequency = true, frequency_subplot = true, coverage_depth_hist = true, confidence_hist = true }
+
 [coverage_options]
 variant_color = "nucleotide" # either "nucleotide" for original configuration, or "frequency" for possible change
 
