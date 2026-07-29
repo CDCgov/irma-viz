@@ -19,10 +19,13 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
 - Moved `tree height` to `[cluster_options]` in `config.toml`
 - Enabled all clustermap matrix types by default in `config.toml`: `expenrd`,
   `jaccard`, `mutuald`, and `njointp`
+- Made `--paired` CLI argument only required if `READ_PERCENTAGES` is toggled on
+  and `viz_option = "pie"` is set
 
 ### Added
 
 - Added pdf rendering capability
+- Added ability to toggle all heuristics plots
 
 ## [0.1.1] - 2026-07-16
 

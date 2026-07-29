@@ -47,6 +47,10 @@ cargo build --profile prod
 cargo run -- --input-root path/to/irma-run --paired true
 ```
 
+Note: if `READ_PERCENTAGES` plots are toggled on, and `viz_option = "pie"`
+which is the case with the default `config.toml` settings, `--paired` is a
+required CLI argument. Otherwise, the argument is not required or read.
+
 ### Demo
 
 With the `demo` feature enabled, you can render one SVG for each plot type for
@@ -90,14 +94,14 @@ These options are provided by CLI. The heuristics parameters are used only for
 plot reference lines and axis boundaries; changing them does not recalculate the
 underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 
-| Parameter       | Plot             | Default | Kind    | Description                                                                                              |
-| --------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| `--min-aq`      | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants        |
-| `--min-f`       | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                       |
-| `--min-tcc`     | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                             |
-| `--min-conf`    | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                      |
-| `--paired`      | read-percentages | true    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot |
-| `--tree-height` | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                 |
+| Parameter       | Plot             | Default | Kind    | Description                                                                                                                                                                            |
+| --------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--min-aq`      | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                                      |
+| `--min-f`       | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                                                                                                     |
+| `--min-tcc`     | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                                                                                                           |
+| `--min-conf`    | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                                                                                                    |
+| `--paired`      | read-percentages | None    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot. Required if `READ_PERCENTAGES` figure is enabled and `viz_option` is `"pie"` |
+| `--tree-height` | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                                                                                               |
 
 ### General TOML Options and Plot Toggles
 
@@ -116,13 +120,14 @@ plots on and off. The plot toggles can be overridden via CLI.
 
 These options are configured in `config.toml`.
 
-| Section              | Option           | Values                                                      | Default        | Description                                                             |
-| -------------------- | ---------------- | ----------------------------------------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `[coverage_options]` | `variant_color`  | `"nucleotide"`, `"frequency"`                               | `"nucleotide"` | Colors variant coverage annotations by nucleotide identity or frequency |
-| `[percent_options]`  | `viz_option`     | `"pie"`, `"sankey"`                                         | `"pie"`        | Chooses the read-percentages visualization style                        |
-| `[cluster_options]`  | `cluster_option` | `"clustermap"`, `"tree"`                                    | `"clustermap"` | Chooses the clustermap layout style                                     |
-| `[cluster_options]`  | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp` | All `true`     | Selects which clustermap matrix types to generate                       |
-| `[cluster_options]`  | `tree_height`    | number from 0 to 1                                          | `0.78`         | Default tree height, overridden by `--tree-height`                      |
+| Section               | Option           | Values                                                                                                                              | Default        | Description                                                             |
+| --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `[heuristics_options] | `enabled_plots`  | booleans for `allele_quality`, `quality_subplot`, `allele_frequency`, `frequency_subplot`, `coverage_depth_hist`, `confidence_hist` | All `true`     | Selects which heuristics plots to generate                              |
+| `[coverage_options]`  | `variant_color`  | `"nucleotide"`, `"frequency"`                                                                                                       | `"nucleotide"` | Colors variant coverage annotations by nucleotide identity or frequency |
+| `[percent_options]`   | `viz_option`     | `"pie"`, `"sankey"`                                                                                                                 | `"pie"`        | Chooses the read-percentages visualization style                        |
+| `[cluster_options]`   | `cluster_option` | `"clustermap"`, `"tree"`                                                                                                            | `"clustermap"` | Chooses the clustermap layout style                                     |
+| `[cluster_options]`   | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp`                                                                         | All `true`     | Selects which clustermap matrix types to generate                       |
+| `[cluster_options]`   | `tree_height`    | number from 0 to 1                                                                                                                  | `0.78`         | Default tree height, overridden by `--tree-height`                      |
 
 ## Plots
 
@@ -156,6 +161,10 @@ bandwidth selection.
 4. Zoomed view of the observed allele frequency
 5. Histogram of coverage depth
 6. Histogram of confidence that an allele is not a machine error
+
+Each plot may be individually toggled within the `config.toml`.
+
+Some of the heuristics plots are affected by the following CLI arguments:
 
 - `--min-aq` places a vertical reference line for average allele quality (1) and
 serves as the x-maximum for the zoomed quality plot (2).

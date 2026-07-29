@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser};
+use clap::Parser;
 
 use crate::config::{OutputFormat, parsed_config::IOConfig};
 
@@ -94,7 +94,7 @@ pub struct HeuristicsCLI {
 #[derive(Debug, Parser)]
 pub struct PlotSpecificCLI {
     /// Whether the input reads are in a paired `fastq` format
-    #[arg(long, action = ArgAction::Set, required = true)]
+    #[arg(long)]
     pub paired: Option<bool>,
 
     /// Tree height for agglomerative clustering

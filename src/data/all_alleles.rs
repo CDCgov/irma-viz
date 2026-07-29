@@ -94,7 +94,6 @@ impl AllAlleles {
     }
 }
 
-#[derive(Clone)]
 pub struct AverageQualities {
     pub data: Vec<f64>,
     pub min: f64,

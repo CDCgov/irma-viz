@@ -31,7 +31,14 @@ fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
 }
 
 pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()> {
-    let paired = cfg.plot_specific.read_percent.paired;
+    let paired = match cfg.plot_specific.read_percent.viz_option {
+        crate::config::PercentVizOption::Pie(paired) => paired,
+        crate::config::PercentVizOption::Sankey => {
+            return Err(anyhow!(
+                "READ_PERCENTAGES pie plot selected without pie configuration"
+            ));
+        }
+    };
 
     let pal = Palette::wong();
 

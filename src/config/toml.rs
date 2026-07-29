@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::config::{
     OutputFormat,
-    parsed_config::{ClusterConfig, CoverageConfig, PercentVizOption, PlotToggles},
+    parsed_config::{ClusterConfig, CoverageConfig, PlotToggles},
 };
 
 #[derive(Debug, Deserialize)]
@@ -38,7 +38,7 @@ pub fn load_config(path: &str) -> Result<TOMLConfig> {
 #[derive(Debug, Deserialize)]
 pub struct PlotSpecificTOML {
     #[serde(rename = "heuristics_options")]
-    pub heuristics: HeuristicsPlots,
+    pub heuristics: HeuristicsTOML,
 
     #[serde(rename = "coverage_options")]
     pub coverage: CoverageConfig,
@@ -53,7 +53,21 @@ pub struct PlotSpecificTOML {
 /// All configuration options for read-percent plots
 #[derive(Debug, Deserialize, Copy, Clone)]
 pub struct ReadPercentTOML {
-    pub viz_option: PercentVizOption,
+    pub viz_option: PercentVizOptionTOML,
+}
+
+#[derive(Debug, Deserialize, Copy, Clone)]
+pub struct HeuristicsTOML {
+    pub enabled_plots: HeuristicsPlots,
+}
+
+/// For selecting between a sankey flow diagram and a dashboard of pie charts
+/// describing the classifications of the reads in the IRMA run
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum PercentVizOptionTOML {
+    Sankey,
+    Pie,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]

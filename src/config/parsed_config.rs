@@ -7,7 +7,7 @@ use crate::config::{
     cli::{CLIConfig, HeuristicsCLI, PlotSpecificCLI, PlotToggleCLI},
     matrices::MatrixTypes,
     targets::{PlotTargets, resolve_targets},
-    toml::{HeuristicsPlots, PlotSpecificTOML, TOMLConfig},
+    toml::{HeuristicsPlots, PercentVizOptionTOML, PlotSpecificTOML, TOMLConfig},
 };
 
 /// A parsed IO Config
@@ -85,11 +85,11 @@ pub enum CoverageColorOption {
 
 /// For selecting between a sankey flow diagram and a dashboard of pie charts
 /// describing the classifications of the reads in the IRMA run
-#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PercentVizOption {
     Sankey,
-    Pie,
+    // holds a bool for true/false based on whether the input is paired
+    Pie(bool),
 }
 
 /// Selects for clustermap plot whether to use a plain heatmap or a phylogenetic
@@ -102,10 +102,9 @@ pub enum ClusterOption {
 }
 
 /// Parsed read-percent plot options
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ReadPercentConfig {
     pub viz_option: PercentVizOption,
-    pub paired: bool,
 }
 
 /// takes the input root for an IRMA run and returns paths for the `tables/` and `matrices/` directories
@@ -170,7 +169,7 @@ impl PlotSpecificConfig {
             min_tcc,
             min_conf,
         } = cli.heuristics_args;
-        let enabled_plots = toml.heuristics;
+        let enabled_plots = toml.heuristics.enabled_plots;
         if !enabled_plots.check_any_enabled() && toggles.heuristics {
             bail!("Error: Heuristics plot enabled but no heuristics subplots were enabled")
         }
@@ -182,13 +181,24 @@ impl PlotSpecificConfig {
             enabled_plots,
         };
 
-        let read_percent = ReadPercentConfig {
-            // viz option is provided via TOML
-            viz_option: toml.read_percent.viz_option,
-            // paired is provided via CLI. we can unwrap here because Clap
-            // guarantees the argument is present
-            paired: cli.paired.unwrap(),
+        let viz_option = match toml.read_percent.viz_option {
+            PercentVizOptionTOML::Sankey => PercentVizOption::Sankey,
+            PercentVizOptionTOML::Pie => {
+                let paired = match cli.paired {
+                    Some(paired) => paired,
+                    None => {
+                        if toggles.read_percentages {
+                            bail!(
+                                "Error: READ_PERCENTAGES plot enabled with 'Pie' selected for viz_option, but `--paired` CLI argument not provided"
+                            )
+                        }
+                        false
+                    }
+                };
+                PercentVizOption::Pie(paired)
+            }
         };
+        let read_percent = ReadPercentConfig { viz_option };
 
         let cluster_config = ClusterConfig {
             // cluster option is provided via TOML

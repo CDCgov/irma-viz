@@ -55,6 +55,10 @@ pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<()> {
     )
     .with_context(|| "Error renaming READ_PERCENTAGES.svg to READ_PERCENTAGES_sankey.svg")?;
 
+    // sets the viz option to true, regardless of default config, so that both
+    // plots can be created for the purpose of the demo
+    cfg.plot_specific.read_percent.viz_option = crate::config::PercentVizOption::Pie(true);
+
     // create pie charts
     let read_counts = ReadCounts::import_from_file(&read_counts_path).with_context(|| {
         format!(

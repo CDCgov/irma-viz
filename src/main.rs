@@ -85,7 +85,7 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
                         )
                     })?
                 }
-                PercentVizOption::Pie => {
+                PercentVizOption::Pie(_) => {
                     let read_counts = ReadCounts::import_from_file(&read_counts_path)
                         .with_context(|| {
                             format!(

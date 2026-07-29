@@ -22,7 +22,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     let mut layouts = Vec::new();
 
     if enabled_plots.allele_quality {
-        let average_qualities = all_alleles.average_qualities.clone();
+        let average_qualities = &all_alleles.average_qualities;
         if average_qualities.data.is_empty() {
             anyhow::bail!("Error: Could not create allele quality heuristics plot; no data found.");
         }
@@ -45,7 +45,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     }
 
     if enabled_plots.quality_subplot {
-        let average_qualities = all_alleles.average_qualities;
+        let average_qualities = &all_alleles.average_qualities;
         if average_qualities.data.is_empty() {
             anyhow::bail!("Error: Could not create allele quality subplot; no data found.");
         }
@@ -65,8 +65,8 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     }
 
     if enabled_plots.allele_frequency {
-        let frequencies = all_alleles.frequencies.clone();
-        let (freq_density, min_y, max_y) = kuva_dens(&frequencies, 0.0, 0.1);
+        let frequencies = &all_alleles.frequencies;
+        let (freq_density, min_y, max_y) = kuva_dens(frequencies, 0.0, 0.1);
         let freq_dens_layout = Layout::auto_from_plots(&freq_density)
             .with_title("Density of observed frequency (to 10%)")
             .with_x_axis_min(0.0)
@@ -81,9 +81,8 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     }
 
     if enabled_plots.frequency_subplot {
-        let frequencies = all_alleles.frequencies;
-
-        let (lim_freq_dens, min_y, max_y) = kuva_dens(&frequencies, 0.0, min_f);
+        let frequencies = &all_alleles.frequencies;
+        let (lim_freq_dens, min_y, max_y) = kuva_dens(frequencies, 0.0, min_f);
         let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
             .with_title(format!("to {min_f}"))
             .with_x_axis_min(0.0)
@@ -124,7 +123,7 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     }
 
     let cols = if plots.len() > 1 { 2 } else { 1 };
-    let rows = match plots.len() / 2 {
+    let rows = match plots.len() {
         1 | 2 => 1,
         3 | 4 => 2,
         5 | 6 => 3,
