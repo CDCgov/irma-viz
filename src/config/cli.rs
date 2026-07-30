@@ -77,17 +77,17 @@ pub struct HeuristicsCLI {
     /// Minimum average allele quality score heuristic for calling insertion &
     /// single nucleotide variants
     #[arg(long, default_value_t = 24.0)]
-    pub min_aq: f64,
+    pub min_variant_average_quality: f64,
     /// Minimum frequency heuristic for calling single nucleotide variants
     #[arg(long, default_value_t = 0.008)]
-    pub min_f: f64,
+    pub min_variant_frequency: f64,
     /// Minimum coverage depth heuristic (total coverage count) for calling
     /// variants
     #[arg(long, default_value_t = 100.0)]
-    pub min_tcc: f64,
+    pub min_variant_depth: f64,
     /// Minimum confidence not machine error for single nucleotide variants
     #[arg(long, default_value_t = 0.8)]
-    pub min_conf: f64,
+    pub min_confidence_not_sequencer_error: f64,
 }
 
 /// Plot specific optoins within the CLI

@@ -1,5 +1,3 @@
-//! TODO: Docs
-
 use crate::{
     config::{
         CLIConfig, ClusterOption, ParsedConfig, PercentVizOption, get_directory_paths, load_config,
@@ -21,26 +19,31 @@ mod data;
 mod demo;
 mod plots;
 
+/// Run the program
 fn main() -> Result<()> {
+    // parsing CLI
     let cli = CLIConfig::parse();
     let config_path = cli.config.clone();
     #[cfg(feature = "demo")]
     let demo_target = cli.demo_target.clone();
+    // parsing TOML
     let toml =
         load_config(&config_path).with_context(|| format!("Loading config from {config_path}"))?;
+    // merging and validating TOML and CLI args, finding targets
     let cfg = ParsedConfig::merge_configs(toml, cli)?;
 
-    #[cfg(feature = "demo")]
-    let mut cfg = cfg;
-
+    // run demo plots, if feature is enabled
     #[cfg(feature = "demo")]
     if let Some(target) = demo_target.as_deref() {
+        let mut cfg = cfg;
         cfg.io_args.output_path = std::path::PathBuf::from("demo");
         ensure_output_dir(&cfg)?;
         return demo::run_demo(&mut cfg, target);
     }
 
+    // confirms output directory exists or creates it
     ensure_output_dir(&cfg)?;
+    // run all plots based on parsed config
     run_plots(&cfg)
 }
 
@@ -55,10 +58,11 @@ fn ensure_output_dir(cfg: &ParsedConfig) -> Result<()> {
     Ok(())
 }
 
+/// Main runner for creating all enabled plots for all enabled targets
 fn run_plots(cfg: &ParsedConfig) -> Result<()> {
     let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
 
-    // Read Counts
+    // Read percentages plots
     if cfg.plot_toggles.read_percentages {
         let read_counts_path = table_path.join("READ_COUNTS.txt");
 
@@ -105,6 +109,7 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
         }
     }
 
+    // Heuristics plots
     for target in &cfg.plot_targets.heuristics {
         let all_alleles_path = table_path.join(format!("{target}-allAlleles.txt"));
         let allele_data = AllAlleles::import_from_file(&all_alleles_path).with_context(|| {
@@ -122,6 +127,7 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
         })?
     }
 
+    // clustermaps, if applicable
     for target in cfg.plot_targets.variant_targets() {
         let variants_path = table_path.join(format!("{target}-variants.txt"));
         let variants = AllVariants::import_from_file(&variants_path).with_context(|| {
@@ -178,6 +184,7 @@ fn run_plots(cfg: &ParsedConfig) -> Result<()> {
             }
         }
 
+        // coverage plots
         if cfg.plot_targets.coverage.contains(&target) {
             let coverage_path = table_path.join(format!("{target}-coverage.txt"));
             let coverage = Coverage::import_from_file(&coverage_path).with_context(|| {

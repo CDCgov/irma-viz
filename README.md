@@ -69,10 +69,11 @@ otherwise specified.
 The `--input-root` (`-i`) must be specified, and should be the base path of the
 `IRMA` run, where `IRMA-viz` expects a `matrices/` and `tables/` directory.
 
-Since the heuristics thresholds `--min-aq`, `--min-f`, `--min-tcc`, and
-`--min-conf` are expected to vary by IRMA module, they are passed via CLI. If
-omitted, IRMA-viz uses the defaults listed below.
-The output path will be in `input-root/figures` unless otherwise specified.
+Since the heuristics thresholds `--min-variant-average-quality`,
+`--min-variant-frequency`, `--min-variant-depth`, and
+`--min-confidence-not-sequencer-error` are expected to vary by IRMA module, they
+are passed via CLI. If omitted, IRMA-viz uses the defaults listed below. The
+output path will be in `input-root/figures` unless otherwise specified.
 
 ## Arguments
 
@@ -94,14 +95,14 @@ These options are provided by CLI. The heuristics parameters are used only for
 plot reference lines and axis boundaries; changing them does not recalculate the
 underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 
-| Parameter       | Plot             | Default | Kind    | Description                                                                                                                                                                            |
-| --------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--min-aq`      | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                                      |
-| `--min-f`       | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                                                                                                     |
-| `--min-tcc`     | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                                                                                                           |
-| `--min-conf`    | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                                                                                                    |
-| `--paired`      | read-percentages | None    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot. Required if `READ_PERCENTAGES` figure is enabled and `viz_option` is `"pie"` |
-| `--tree-height` | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                                                                                               |
+| Parameter                              | Plot             | Default | Kind    | Description                                                                                                                                                                            |
+| -------------------------------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--min-variant-average-quality`        | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                                      |
+| `--min-variant-frequency`              | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                                                                                                     |
+| `--min-variant-depth`                  | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                                                                                                           |
+| `--min-confidence-not-sequencer-error` | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                                                                                                    |
+| `--paired`                             | read-percentages | None    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot. Required if `READ_PERCENTAGES` figure is enabled and `viz_option` is `"pie"` |
+| `--tree-height`                        | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                                                                                               |
 
 ### General TOML Options and Plot Toggles
 
@@ -166,14 +167,14 @@ Each plot may be individually toggled within the `config.toml`.
 
 Some of the heuristics plots are affected by the following CLI arguments:
 
-- `--min-aq` places a vertical reference line for average allele quality (1) and
-serves as the x-maximum for the zoomed quality plot (2).
-- `--min-f` places a vertical reference line for the observed allele frequency
+- `--min-variant-average-quality` places a vertical reference line for average
+allele quality (1) and serves as the x-maximum for the zoomed quality plot (2).
+- `--min-variant-frequency` places a vertical reference line for the observed allele frequency
 (3) and serves as the x-maximum for the zoomed frequency plot (4).
-- `--min-tcc` chooses where to add a vertical reference line for the coverage
-histogram (5).
-- `--min-conf` chooses where to add a vertical reference line for the confidence
-histogram (6).
+- `--min-variant-depth` chooses where to add a vertical reference line for the
+coverage histogram (5).
+- `--min-confidence-not-sequencer-error` chooses where to add a vertical
+reference line for the confidence histogram (6).
 
 These thresholds are shown for interpretation only: changing the corresponding
 CLI arguments updates the reference lines and axis bounds in the plot, but does

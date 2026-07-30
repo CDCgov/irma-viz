@@ -21,6 +21,11 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
   `jaccard`, `mutuald`, and `njointp`
 - Made `--paired` CLI argument only required if `READ_PERCENTAGES` is toggled on
   and `viz_option = "pie"` is set
+- Clarified CLI argument names for heuristics thresholds
+  - `--min-aq` > `min-variant-average-quality`
+  - `--min-f` > `--min-variant-frequency`
+  - `--min-tcc` > `--min-variant-depth`
+  - `--min-conf` > `--min-confidence-not-sequencer-error`
 
 ### Added
 

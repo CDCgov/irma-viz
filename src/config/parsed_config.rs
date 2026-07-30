@@ -127,16 +127,31 @@ fn validate_heuristics_thresholds(heuristics: HeuristicsCLI, toggles: PlotToggle
         return Ok(());
     }
 
-    validate_finite_range("min_f", heuristics.min_f, 0.0, 1.0)?;
+    validate_finite_range(
+        "--min-variant-frequency",
+        heuristics.min_variant_frequency,
+        0.0,
+        1.0,
+    )?;
 
-    validate_finite_range("min_conf", heuristics.min_conf, 0.0, 1.0)?;
+    validate_finite_range(
+        "--min-confidence-not-sequencer-error",
+        heuristics.min_confidence_not_sequencer_error,
+        0.0,
+        1.0,
+    )?;
 
-    validate_finite_range("min_aq", heuristics.min_aq, 0.0, 64.0)?;
+    validate_finite_range(
+        "min-variant-average-quality",
+        heuristics.min_variant_average_quality,
+        0.0,
+        64.0,
+    )?;
 
-    if !heuristics.min_tcc.is_finite() || heuristics.min_tcc < 1.0 {
+    if !heuristics.min_variant_depth.is_finite() || heuristics.min_variant_depth < 1.0 {
         anyhow::bail!(
-            "Error: Value min_tcc must be finite and greater than or equal to 1, {} was provided",
-            heuristics.min_tcc
+            "Error: Value --min-variant-depth must be finite and greater than or equal to 1, {} was provided",
+            heuristics.min_variant_depth
         );
     }
 
@@ -164,10 +179,10 @@ impl PlotSpecificConfig {
         // heuristics options are only provided via CLI
         validate_heuristics_thresholds(cli.heuristics_args, toggles)?;
         let HeuristicsCLI {
-            min_aq,
-            min_f,
-            min_tcc,
-            min_conf,
+            min_variant_average_quality: min_aq,
+            min_variant_frequency: min_f,
+            min_variant_depth: min_tcc,
+            min_confidence_not_sequencer_error: min_conf,
         } = cli.heuristics_args;
         let enabled_plots = toml.heuristics.enabled_plots;
         if !enabled_plots.check_any_enabled() && toggles.heuristics {
