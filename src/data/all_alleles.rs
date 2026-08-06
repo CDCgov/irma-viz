@@ -1,5 +1,4 @@
-use crate::data::*;
-use anyhow::{Context, Result, anyhow};
+use crate::{data::*, diagnostics::PlotError};
 use std::path::Path;
 
 const TOTAL_PROB: f64 = 0.2;
@@ -30,8 +29,15 @@ pub struct AllAlleles {
 impl AllAlleles {
     /// Reads an all-alleles TSV file and extracts the columns used by the
     /// heuristics figure. Missing quality/confidence values are skipped, zero
-    /// confidence values are excluded, and totals are filtered to the configured quantile.
-    pub fn import_from_file(filename: &Path) -> Result<Self> {
+    /// confidence values are excluded, and totals are filtered to the
+    /// configured quantile.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an IO error if the csv reader is unable to be built, or a line
+    /// of the csv reader is unable to be parsed, or if the quantile is unable
+    /// to be calculated because `all_alleles_data.totals` is empty
+    pub fn import_from_file(filename: &Path) -> Result<Self, PlotError> {
         let mut all_alleles_data = AllAlleles {
             totals: Totals {
                 data: Vec::new(),
@@ -49,10 +55,13 @@ impl AllAlleles {
         let mut all_alleles_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .from_path(filename)
-            .with_context(|| format!("Cannot read {}", filename.display()))?;
+            .map_err(|err| {
+                PlotError::IOError(format!("opening '{}'", filename.display()), err.into())
+            })?;
 
         for line in all_alleles_reader.deserialize() {
-            let line: AllAllelesLine = line?;
+            let line: AllAllelesLine =
+                line.map_err(|err| PlotError::InvalidData(err.to_string()))?;
 
             all_alleles_data.totals.data.push(line.total);
 
@@ -76,11 +85,12 @@ impl AllAlleles {
         }
 
         let upper_quantile =
-            quantile(&all_alleles_data.totals.data, TOTAL_PROB).with_context(|| {
-                format!(
-                    "Error calculating totals quantile from {}",
+            quantile(&all_alleles_data.totals.data, TOTAL_PROB).map_err(|err| {
+                PlotError::InvalidData(format!(
+                    "Error calculating totals quantile from {}: {}",
                     filename.display(),
-                )
+                    err
+                ))
             })?;
         all_alleles_data.totals.data = all_alleles_data
             .totals
@@ -107,19 +117,28 @@ pub struct Totals {
 
 /// The quantile of observations `x` at probability `p`. Assumes all
 /// observations `x` have equal weight. Eurostat definition.
-fn quantile(x: &[f64], p: f64) -> Result<f64> {
-    if x.is_empty() {
-        return Err(anyhow!("Observations must not be empty"));
+///
+/// ## Errors
+///
+/// Returns an error if the slice of observations is empty
+fn quantile(observations: &[f64], probability: f64) -> Result<f64, PlotError> {
+    if observations.is_empty() {
+        return Err(PlotError::MissingData(
+            "Allele observations must not be empty".to_string(),
+        ));
     }
-    if !(0.0..=1.0).contains(&p) {
-        return Err(anyhow!("Probability must be between 0.0 and 1.0"));
+    // this is checking a const, it won't ever be changed by a user
+    if !(0.0..=1.0).contains(&probability) {
+        return Err(PlotError::InvalidData(
+            "const TOTAL_PROB must be between 0.0 and 1.0".to_string(),
+        ));
     }
 
-    let mut sorted = x.to_vec();
+    let mut sorted = observations.to_vec();
     sorted.sort_by(|a, b| a.total_cmp(b));
 
     let n = sorted.len() as f64;
-    let pos = p * (n - 1.0);
+    let pos = probability * (n - 1.0);
     let lower_idx = pos.floor() as usize;
     let upper_idx = pos.ceil() as usize;
 

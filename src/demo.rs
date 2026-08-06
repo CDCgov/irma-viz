@@ -1,14 +1,10 @@
 use crate::{
-    config::{MatrixType, OutputFormat, ParsedConfig, get_directory_paths, is_valid_target_name},
-    data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
-    plots::{
-        clustermap::{plot_clustermap, plot_heat_phylo},
-        coverage::plot_coverage,
-        heuristics::plot_heuristics,
-        read_percentages::{plot_perc_pies, plot_perc_sankey},
+    config::{
+        CoverageColorOption, MatrixType, OutputFormat, ParsedConfig, PercentVizOption,
+        discover_clustermap_targets, is_valid_target_name,
     },
+    diagnostics::PlotError,
 };
-use anyhow::{Context, Result, bail};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -30,160 +26,94 @@ const COMBINED_CELL_WIDTH: f64 = 480.0;
 const COMBINED_ROW_HEIGHTS: [f64; 2] = [420.0, 420.0];
 const SVG_XMLNS: &str = "http://www.w3.org/2000/svg";
 
-pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<()> {
+pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<(), PlotError> {
     if !is_valid_target_name(target) {
-        bail!("Error: Invalid target name for demo_target");
+        return Err(PlotError::ConfigError(format!(
+            "invalid target name for demo_target: '{target}'"
+        )));
     }
-    let (table_path, matrix_path) = get_directory_paths(&cfg.io_args.input_root);
+
     cfg.io_args.output_format = OutputFormat::Svg;
 
-    // get data for read counts
-    let read_counts_path = table_path.join("READ_COUNTS.txt");
-    let sankey_vec = SankeyVec::import_from_file(&read_counts_path).with_context(|| {
-        format!(
-            "Failed to import Read Counts data from '{}'",
-            read_counts_path.display()
-        )
-    })?;
-    plot_perc_sankey(sankey_vec, cfg)
-        .with_context(|| "Error plotting READ_PERCENTAGES_sankey.svg")?;
-    // rename first plot for the purpose of the demo, since we are creating two
-    // READ_PERCENTAGES plots and don't want the pie charts to get overwritten
-    fs::rename(
-        cfg.io_args.output_path.join("READ_PERCENTAGES.svg"),
-        cfg.io_args.output_path.join("READ_PERCENTAGES_sankey.svg"),
-    )
-    .with_context(|| "Error renaming READ_PERCENTAGES.svg to READ_PERCENTAGES_sankey.svg")?;
+    render_demo_read_percentages(cfg)?;
+    render_demo_heuristics(cfg, target)?;
+    render_demo_coverage(cfg, target)?;
+    let matrix_name = render_demo_clustermap(cfg, target)?;
 
-    // sets the viz option to true, regardless of default config, so that both
-    // plots can be created for the purpose of the demo
-    cfg.plot_specific.read_percent.viz_option = crate::config::PercentVizOption::Pie(true);
-
-    // create pie charts
-    let read_counts = ReadCounts::import_from_file(&read_counts_path).with_context(|| {
-        format!(
-            "Failed to import Read Counts data from '{}'",
-            read_counts_path.display()
-        )
-    })?;
-    plot_perc_pies(read_counts, cfg).with_context(|| "Error plotting READ_PERCENTAGES.svg")?;
-
-    // heuristics
-    let all_alleles_path = table_path.join(format!("{target}-allAlleles.txt"));
-    let allele_data = AllAlleles::import_from_file(&all_alleles_path).with_context(|| {
-        format!(
-            "Failed to import All Alleles data from '{}'",
-            all_alleles_path.display()
-        )
-    })?;
-    plot_heuristics(allele_data, cfg, target)
-        .with_context(|| format!("Error plotting {target}-heuristics.svg"))?;
-
-    // variants and coverage
-    let variants_path = table_path.join(format!("{target}-variants.txt"));
-    let variants = AllVariants::import_from_file(&variants_path).with_context(|| {
-        format!(
-            "Failed to import Variants data from '{}'",
-            variants_path.display()
-        )
-    })?;
-
-    let coverage_path = table_path.join(format!("{target}-coverage.txt"));
-    let coverage = Coverage::import_from_file(&coverage_path).with_context(|| {
-        format!(
-            "Failed to import Coverage data from '{}'",
-            coverage_path.display()
-        )
-    })?;
-
-    let pairing_stats_path = table_path.join(format!("{target}-pairingStats.txt"));
-    let pairing_stats = PairingStats::import_from_file(&pairing_stats_path).with_context(|| {
-        format!(
-            "Failed to import Pairing Stats data from '{}'",
-            pairing_stats_path.display()
-        )
-    })?;
-
-    // create frequency coverage plot
-    cfg.plot_specific.coverage.color_option = crate::config::CoverageColorOption::Frequency;
-
-    let nucleotide_plot_path = format!("{target}-coverageDiagram.svg");
-    let frequency_plot_path = format!("{target}-coverageDiagram_frequency.svg");
-
-    plot_coverage(coverage, variants.clone(), pairing_stats, cfg, target)
-        .with_context(|| format!("Error plotting demo frequency plot to {nucleotide_plot_path}"))?;
-    fs::rename(
-        cfg.io_args.output_path.join(&nucleotide_plot_path),
-        cfg.io_args.output_path.join(&frequency_plot_path),
-    )
-    .with_context(|| format!("Error renaming {nucleotide_plot_path} to {frequency_plot_path}"))?;
-
-    // create nucleotide coverage plot
-    cfg.plot_specific.coverage.color_option = crate::config::CoverageColorOption::Nucleotide;
-    let coverage = Coverage::import_from_file(&coverage_path).with_context(|| {
-        format!(
-            "Failed to re-import Coverage data from '{}'",
-            coverage_path.display()
-        )
-    })?;
-    let pairing_stats = PairingStats::import_from_file(&pairing_stats_path).with_context(|| {
-        format!(
-            "Failed to re-import Pairing Stats data from '{}'",
-            pairing_stats_path.display()
-        )
-    })?;
-    plot_coverage(coverage, variants.clone(), pairing_stats, cfg, target).with_context(|| {
-        format!("Error plotting demo nucleotide plot to {nucleotide_plot_path}")
-    })?;
-
-    if variants.positions.len() <= 1 {
-        bail!("Demo clustermap output requires more than one variant for target {target}");
-    }
-
-    //  clustermaps
-    let matrix_type = MATRIX_TYPES
-        .into_iter()
-        .find(|matrix_type| {
-            matrix_path
-                .join(format!("{target}{}", matrix_type.file_suffix()))
-                .is_file()
-        })
-        .ok_or_else(|| {
-            anyhow::anyhow!("No clustermap matrix file was found for target {target}")
-        })?;
-
-    let sqm_path = matrix_path.join(format!("{target}{}", matrix_type.file_suffix()));
-    let sqm = SquareMatrix::import_from_file(&sqm_path).with_context(|| {
-        format!(
-            "Failed to import Square Matrix data from '{}'",
-            sqm_path.display()
-        )
-    })?;
-    let matrix_name = matrix_type.display_name();
-
-    plot_heat_phylo(sqm.clone(), cfg, target, matrix_name)
-        .with_context(|| format!("Error plotting {target}-{matrix_name}_tree.svg"))?;
-    // rename first plot for the purpose of the demo, since we are creating two
-    // clustermap plots and don't want the tree plot to get overwritten
-    fs::rename(
-        cfg.io_args
-            .output_path
-            .join(format!("{target}-{matrix_name}.svg")),
-        cfg.io_args
-            .output_path
-            .join(format!("{target}-{matrix_name}_tree.svg")),
-    )
-    .with_context(|| {
-        format!("Error renaming {target}-{matrix_name}.svg to {target}-{matrix_name}_tree.svg")
-    })?;
-
-    plot_clustermap(sqm, cfg, target, matrix_name)
-        .with_context(|| format!("Error plotting {target}-{matrix_name}.svg"))?;
-
-    render_combined_demo_svg(&cfg.io_args.output_path, target, matrix_name)
-        .with_context(|| "Error rendering combined demo SVG")?;
+    render_combined_demo_svg(&cfg.io_args.output_path, target, matrix_name)?;
 
     Ok(())
+}
+
+fn render_demo_read_percentages(cfg: &mut ParsedConfig) -> Result<(), PlotError> {
+    cfg.plot_specific.read_percent.viz_option = PercentVizOption::Sankey;
+    crate::run_read_percentages(cfg)?;
+    rename_demo_output(
+        cfg.io_args.output_path.as_path(),
+        "READ_PERCENTAGES.svg",
+        "READ_PERCENTAGES_sankey.svg",
+    )?;
+
+    // Render both demo variants while keeping the standard pie-chart filename.
+    cfg.plot_specific.read_percent.viz_option = PercentVizOption::Pie(true);
+    crate::run_read_percentages(cfg)?;
+
+    Ok(())
+}
+
+fn render_demo_heuristics(cfg: &ParsedConfig, target: &str) -> Result<(), PlotError> {
+    crate::run_heuristics_for_target(cfg, target)
+}
+
+fn render_demo_coverage(cfg: &mut ParsedConfig, target: &str) -> Result<(), PlotError> {
+    let original_color = cfg.plot_specific.coverage.color_option;
+    cfg.plot_specific.coverage.color_option = CoverageColorOption::Frequency;
+    crate::run_coverage_for_target(cfg, target)?;
+    rename_demo_output(
+        cfg.io_args.output_path.as_path(),
+        &format!("{target}-coverageDiagram.svg"),
+        &format!("{target}-coverageDiagram_frequency.svg"),
+    )?;
+
+    cfg.plot_specific.coverage.color_option = CoverageColorOption::Nucleotide;
+    let render_result = crate::run_coverage_for_target(cfg, target);
+    cfg.plot_specific.coverage.color_option = original_color;
+    render_result
+}
+
+fn render_demo_clustermap(cfg: &mut ParsedConfig, target: &str) -> Result<&'static str, PlotError> {
+    let cluster_targets = discover_clustermap_targets(cfg)?;
+    let matrix_type = MATRIX_TYPES
+        .into_iter()
+        .find(|matrix_type| cluster_targets.targets_for(*matrix_type).contains(target))
+        .ok_or_else(|| {
+            PlotError::MissingData(format!(
+                "no clustermap matrix file was found for target {target}"
+            ))
+        })?;
+
+    let matrix_name = matrix_type.display_name();
+    let original_option = cfg.plot_specific.cluster_config.cluster_option;
+
+    cfg.plot_specific.cluster_config.cluster_option = crate::config::ClusterOption::Tree;
+    crate::run_clustermap_for_matrix_type(cfg, target, matrix_type)?;
+    rename_demo_output(
+        cfg.io_args.output_path.as_path(),
+        &format!("{target}-{matrix_name}.svg"),
+        &format!("{target}-{matrix_name}_tree.svg"),
+    )?;
+
+    cfg.plot_specific.cluster_config.cluster_option = crate::config::ClusterOption::Clustermap;
+    let render_result = crate::run_clustermap_for_matrix_type(cfg, target, matrix_type);
+    cfg.plot_specific.cluster_config.cluster_option = original_option;
+    render_result?;
+
+    Ok(matrix_name)
+}
+
+fn rename_demo_output(output_path: &Path, from: &str, to: &str) -> Result<(), PlotError> {
+    fs::rename(output_path.join(from), output_path.join(to))
+        .map_err(|err| PlotError::IOError(format!("renaming '{from}' to '{to}'"), err))
 }
 
 /// Data and metadata for a single plot
@@ -197,7 +127,11 @@ struct SvgPanel {
 }
 
 /// loads all of the rendered svgs and stitches them together
-fn render_combined_demo_svg(output_path: &Path, target: &str, matrix_name: &str) -> Result<()> {
+fn render_combined_demo_svg(
+    output_path: &Path,
+    target: &str,
+    matrix_name: &str,
+) -> Result<(), PlotError> {
     // read all svgs
     let panels = [
         load_svg_panel(output_path.join("READ_PERCENTAGES.svg"), "combined-pies")?,
@@ -259,31 +193,36 @@ fn render_combined_demo_svg(output_path: &Path, target: &str, matrix_name: &str)
     svg.push_str("</svg>");
 
     fs::write(output_path.join("combined.svg"), svg)
-        .with_context(|| "Failed to write combined.svg")?;
+        .map_err(|err| PlotError::IOError("writing 'combined.svg'".to_string(), err))?;
 
     Ok(())
 }
 
 /// Reads in an svg's data and metadata
-fn load_svg_panel(path: PathBuf, id_prefix: &str) -> Result<SvgPanel> {
+fn load_svg_panel(path: PathBuf, id_prefix: &str) -> Result<SvgPanel, PlotError> {
     let svg = fs::read_to_string(&path)
-        .with_context(|| format!("Failed to read '{}'", path.display()))?;
-    let open_start = svg
-        .find("<svg")
-        .with_context(|| format!("No <svg> tag found in '{}'", path.display()))?;
+        .map_err(|err| PlotError::IOError(format!("reading '{}'", path.display()), err))?;
+    let open_start = svg.find("<svg").ok_or_else(|| {
+        PlotError::InvalidData(format!("no <svg> tag found in '{}'", path.display()))
+    })?;
     let open_end = svg[open_start..]
         .find('>')
         .map(|idx| open_start + idx)
-        .with_context(|| format!("Malformed <svg> tag in '{}'", path.display()))?;
+        .ok_or_else(|| {
+            PlotError::InvalidData(format!("malformed <svg> tag in '{}'", path.display()))
+        })?;
     let root_tag = &svg[open_start..=open_end];
-    let close_start = svg
-        .rfind("</svg>")
-        .with_context(|| format!("No closing </svg> tag found in '{}'", path.display()))?;
+    let close_start = svg.rfind("</svg>").ok_or_else(|| {
+        PlotError::InvalidData(format!(
+            "no closing </svg> tag found in '{}'",
+            path.display()
+        ))
+    })?;
 
     let width = parse_svg_dimension(root_tag, "width")
-        .with_context(|| format!("Missing width in '{}'", path.display()))?;
+        .map_err(|err| PlotError::InvalidData(format!("{err} in '{}'", path.display())))?;
     let height = parse_svg_dimension(root_tag, "height")
-        .with_context(|| format!("Missing height in '{}'", path.display()))?;
+        .map_err(|err| PlotError::InvalidData(format!("{err} in '{}'", path.display())))?;
     let root_attrs = extract_root_attrs(root_tag);
 
     let body =
@@ -298,22 +237,22 @@ fn load_svg_panel(path: PathBuf, id_prefix: &str) -> Result<SvgPanel> {
 }
 
 // gets metadata from a given svg
-fn parse_svg_dimension(svg_tag: &str, attribute: &str) -> Result<f64> {
+fn parse_svg_dimension(svg_tag: &str, attribute: &str) -> Result<f64, PlotError> {
     let marker = format!("{attribute}=\"");
     let start = svg_tag
         .find(&marker)
         .map(|idx| idx + marker.len())
-        .with_context(|| format!("Attribute {attribute:?} not found"))?;
+        .ok_or_else(|| PlotError::InvalidData(format!("attribute {attribute:?} not found")))?;
     let end = svg_tag[start..]
         .find('"')
         .map(|idx| start + idx)
-        .with_context(|| format!("Attribute {attribute:?} is not closed"))?;
+        .ok_or_else(|| PlotError::InvalidData(format!("attribute {attribute:?} is not closed")))?;
     let raw = &svg_tag[start..end];
     let numeric = raw.trim_end_matches(|c: char| !(c.is_ascii_digit() || matches!(c, '.' | '-')));
 
     numeric
         .parse::<f64>()
-        .with_context(|| format!("Invalid {attribute:?} value {raw:?}"))
+        .map_err(|_| PlotError::InvalidData(format!("invalid {attribute:?} value {raw:?}")))
 }
 
 // get metadata (font) from an svg

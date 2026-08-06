@@ -1,9 +1,9 @@
 use crate::{
     config::{CoverageColorOption, ParsedConfig},
     data::{AllVariants, Coverage, PairingStats},
+    diagnostics::PlotError,
     plots::{render_multiplot, render_plot},
 };
-use anyhow::Result;
 use kuva::{prelude::*, render::annotations::TextAnnotation};
 
 /// For coloring allele reference lines based on the variant nucleotide
@@ -42,13 +42,21 @@ pub fn kuva_coverage(coverage: Coverage) -> Vec<Plot> {
     ]
 }
 
+/// Creates a coverage plot for a target and renders it to a file. If enabled
+/// and if variants exist, a multiplot will instead be created with a bar plot
+/// showing the frequencies of variants
+///
+/// ## Errors
+///
+/// Passes up any IO Error that might arise from [`render_multiplot`] or
+/// [`render_plot`]
 pub fn plot_coverage(
     coverage: Coverage,
     variants: AllVariants,
     pairing_stats: PairingStats,
     cfg: &ParsedConfig,
     target: &str,
-) -> Result<()> {
+) -> Result<(), PlotError> {
     const OFFSET: f64 = 20.5;
 
     let coverage_plot = kuva_coverage(coverage.clone());

@@ -2,8 +2,6 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::config::{OutputFormat, parsed_config::IOConfig};
-
 /// These are for overriding settings from the config.toml
 #[derive(Debug, Parser)]
 #[command(name = "irma-viz", version, about = "Render IRMA plots")]
@@ -35,25 +33,6 @@ pub struct IOArgsCLI {
     /// `input_root/figures/`
     #[arg(long, short = 'o')]
     pub output_path: Option<PathBuf>,
-}
-
-impl IOArgsCLI {
-    /// Parses IO args by setting `output_path` to `input_root/figures` if no
-    /// `output_path` is otherwise specified
-    pub fn parse_io_args(self, output_format: OutputFormat) -> IOConfig {
-        let IOArgsCLI {
-            input_root,
-            output_path,
-        } = self;
-        let output_path = output_path
-            .clone()
-            .unwrap_or_else(|| input_root.join("figures"));
-        IOConfig {
-            input_root,
-            output_path,
-            output_format,
-        }
-    }
 }
 
 /// Toggles for enabling/disabling plot types within the CLI; overrides TOML

@@ -14,7 +14,12 @@ pub struct PairingStats {
 }
 
 impl PairingStats {
-    /// TODO: Docs
+    /// Reads a pairingStats TSV file and parses it for a coverage plot.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an IO error if the csv reader is unable to be built, or a line
+    /// of the csv reader is unable to be parsed
     pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut data = HashMap::new();
 

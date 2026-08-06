@@ -26,6 +26,10 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
   - `--min-f` > `--min-variant-frequency`
   - `--min-tcc` > `--min-variant-depth`
   - `--min-conf` > `--min-confidence-not-sequencer-error`
+- Improved error and warning output to provide context for failed plots
+- Made most plotting, data, and IO errors fallible, so that even if errors
+  exist, as many plots as possible will still be created, and warnings will be
+  provided via `std_err`
 
 ### Added
 

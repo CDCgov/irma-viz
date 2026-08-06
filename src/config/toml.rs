@@ -1,11 +1,10 @@
 use std::fs;
 
-use anyhow::{Context as _, Result};
 use serde::Deserialize;
 
-use crate::config::{
-    OutputFormat,
-    parsed_config::{ClusterConfig, CoverageConfig, PlotToggles},
+use crate::{
+    config::parsed_config::{ClusterConfig, CoverageConfig, OutputFormat, PlotToggles},
+    diagnostics::PlotError,
 };
 
 #[derive(Debug, Deserialize)]
@@ -27,10 +26,11 @@ pub struct OutputOptions {
 }
 
 /// Parses the `config.toml`` file into structs using the [toml] crate
-pub fn load_config(path: &str) -> Result<TOMLConfig> {
-    let s = fs::read_to_string(path).with_context(|| format!("Error reading \'{path}\'"))?;
+pub fn load_config(path: &str) -> Result<TOMLConfig, PlotError> {
+    let s = fs::read_to_string(path)
+        .map_err(|err| PlotError::IOError(format!("reading '{path}'"), err))?;
     let cfg: TOMLConfig =
-        toml::from_str(&s).with_context(|| format!("Error parsing \'{path}\'"))?;
+        toml::from_str(&s).map_err(|err| PlotError::InvalidData(err.to_string()))?;
     Ok(cfg)
 }
 

@@ -1,15 +1,28 @@
 use crate::{
     config::{HeuristicsConfig, ParsedConfig},
     data::AllAlleles,
+    diagnostics::{PlotError, Severity, warn},
     plots::render_multiplot,
+    warn_plot_error,
 };
-use anyhow::{Context, Result};
 use kuva::{plot::Histogram, prelude::*};
 
 const NUM_BINS: usize = 50; // from IRMA
 const SAMPLES: usize = 1000;
 
-pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str) -> Result<()> {
+/// Creates a heuristics multiplot for a target. Each of the six subplots can be
+/// independently toggled off in the TOML; each also can individually fail if
+/// there is no data, in which case they will be excluded from the output
+///
+/// ## Errors
+///
+/// Returns an error if no plots were able to be created, or passes up an IO
+/// Error from [`render_multiplot`]
+pub fn plot_heuristics(
+    all_alleles: AllAlleles,
+    cfg: &ParsedConfig,
+    target: &str,
+) -> Result<(), PlotError> {
     let HeuristicsConfig {
         min_aq,
         min_f,
@@ -24,102 +37,173 @@ pub fn plot_heuristics(all_alleles: AllAlleles, cfg: &ParsedConfig, target: &str
     if enabled_plots.allele_quality {
         let average_qualities = &all_alleles.average_qualities;
         if average_qualities.data.is_empty() {
-            anyhow::bail!("Error: Could not create allele quality heuristics plot; no data found.");
-        }
-        let (aq_density, min_y, max_y) = kuva_dens(
-            &average_qualities.data,
-            average_qualities.min,
-            average_qualities.max,
-        );
-        let aq_dens_layout = Layout::auto_from_plots(&aq_density)
-            .with_title("Density of average allele quality")
-            .with_x_axis_min(average_qualities.min)
-            .with_x_axis_max(average_qualities.max)
-            .with_y_axis_min(min_y - min_y * 0.05)
-            .with_y_axis_max(max_y + max_y * 0.05)
-            .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
-            .with_show_grid(false);
+            warn_plot_error(
+                "heuristics allele quality",
+                Some(target),
+                &PlotError::MissingData(String::from("no average quality data found")),
+            );
+        } else {
+            let (aq_density, min_y, max_y) = kuva_dens(
+                &average_qualities.data,
+                average_qualities.min,
+                average_qualities.max,
+            );
+            let aq_dens_layout = Layout::auto_from_plots(&aq_density)
+                .with_title("Density of average allele quality")
+                .with_x_axis_min(average_qualities.min)
+                .with_x_axis_max(average_qualities.max)
+                .with_y_axis_min(min_y - min_y * 0.05)
+                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
+                .with_show_grid(false);
 
-        plots.push(aq_density);
-        layouts.push(aq_dens_layout);
+            plots.push(aq_density);
+            layouts.push(aq_dens_layout);
+        }
     }
 
     if enabled_plots.quality_subplot {
         let average_qualities = &all_alleles.average_qualities;
         if average_qualities.data.is_empty() {
-            anyhow::bail!("Error: Could not create allele quality subplot; no data found.");
+            // don't need to warn a second time for the subplot if it's already
+            // been warned once about the missing data
+            if !enabled_plots.allele_quality {
+                warn_plot_error(
+                    "heuristics quality subplot",
+                    Some(target),
+                    &PlotError::MissingData(String::from("no average quality data found")),
+                );
+            }
+        } else {
+            let (limited_aq_density, min_y, max_y) =
+                kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
+            let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
+                .with_title(format!("to {min_aq}"))
+                .with_x_axis_min(average_qualities.min)
+                .with_x_axis_max(min_aq)
+                .with_y_axis_min(min_y - min_y * 0.05)
+                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_show_grid(false);
+
+            plots.push(limited_aq_density);
+            layouts.push(lim_aq_dens_layout);
         }
-
-        let (limited_aq_density, min_y, max_y) =
-            kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
-        let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
-            .with_title(format!("to {min_aq}"))
-            .with_x_axis_min(average_qualities.min)
-            .with_x_axis_max(min_aq)
-            .with_y_axis_min(min_y - min_y * 0.05)
-            .with_y_axis_max(max_y + max_y * 0.05)
-            .with_show_grid(false);
-
-        plots.push(limited_aq_density);
-        layouts.push(lim_aq_dens_layout);
     }
 
     if enabled_plots.allele_frequency {
         let frequencies = &all_alleles.frequencies;
-        let (freq_density, min_y, max_y) = kuva_dens(frequencies, 0.0, 0.1);
-        let freq_dens_layout = Layout::auto_from_plots(&freq_density)
-            .with_title("Density of observed frequency (to 10%)")
-            .with_x_axis_min(0.0)
-            .with_x_axis_max(0.1)
-            .with_y_axis_min(min_y - min_y * 0.05)
-            .with_y_axis_max(max_y + max_y * 0.05)
-            .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
-            .with_show_grid(false);
+        if frequencies.is_empty() {
+            warn_plot_error(
+                "heuristics frequency",
+                Some(target),
+                &PlotError::MissingData(String::from("no allele frequency data found")),
+            );
+        } else {
+            let (freq_density, min_y, max_y) = kuva_dens(frequencies, 0.0, 0.1);
+            let freq_dens_layout = Layout::auto_from_plots(&freq_density)
+                .with_title("Density of observed frequency (to 10%)")
+                .with_x_axis_min(0.0)
+                .with_x_axis_max(0.1)
+                .with_y_axis_min(min_y - min_y * 0.05)
+                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
+                .with_show_grid(false);
 
-        plots.push(freq_density);
-        layouts.push(freq_dens_layout);
+            plots.push(freq_density);
+            layouts.push(freq_dens_layout);
+        }
     }
 
     if enabled_plots.frequency_subplot {
         let frequencies = &all_alleles.frequencies;
-        let (lim_freq_dens, min_y, max_y) = kuva_dens(frequencies, 0.0, min_f);
-        let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
-            .with_title(format!("to {min_f}"))
-            .with_x_axis_min(0.0)
-            .with_x_axis_max(min_f)
-            .with_y_axis_min(min_y - min_y * 0.001)
-            .with_y_axis_max(max_y + max_y * 0.001)
-            .with_show_grid(false);
+        if frequencies.is_empty() {
+            if !enabled_plots.allele_frequency {
+                warn_plot_error(
+                    "heuristics frequency subplot",
+                    Some(target),
+                    &PlotError::MissingData(String::from("no allele frequency data found")),
+                );
+            }
+        } else {
+            let (lim_freq_dens, min_y, max_y) = kuva_dens(frequencies, 0.0, min_f);
+            let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
+                .with_title(format!("to {min_f}"))
+                .with_x_axis_min(0.0)
+                .with_x_axis_max(min_f)
+                .with_y_axis_min(min_y - min_y * 0.001)
+                .with_y_axis_max(max_y + max_y * 0.001)
+                .with_show_grid(false);
 
-        plots.push(lim_freq_dens);
-        layouts.push(lim_freq_dens_layout);
+            plots.push(lim_freq_dens);
+            layouts.push(lim_freq_dens_layout);
+        }
     }
 
     if enabled_plots.coverage_depth_hist {
-        let cov_hist = kuva_histogram(all_alleles.totals.data, NUM_BINS)
-            .with_context(|| "coverage histogram subplot")?;
-        let cov_hist_layout = Layout::auto_from_plots(&cov_hist)
-            .with_x_axis_min(0.0)
-            .with_x_axis_max(all_alleles.totals.upper_quantile + 1.0)
-            .with_reference_line(ReferenceLine::vertical(min_tcc).with_dasharray("none"))
-            .with_show_grid(false)
-            .with_title("Histogram of coverage (Depth <= 20% Quantile)");
+        if all_alleles.totals.data.is_empty() {
+            warn_plot_error(
+                "heuristics coverage depth histogram",
+                Some(target),
+                &PlotError::MissingData(String::from("no coverage depth data found")),
+            );
+        } else {
+            match kuva_histogram(all_alleles.totals.data, NUM_BINS) {
+                Ok(cov_hist) => {
+                    let cov_hist_layout = Layout::auto_from_plots(&cov_hist)
+                        .with_x_axis_min(0.0)
+                        .with_x_axis_max(all_alleles.totals.upper_quantile + 1.0)
+                        .with_reference_line(
+                            ReferenceLine::vertical(min_tcc).with_dasharray("none"),
+                        )
+                        .with_show_grid(false)
+                        .with_title("Histogram of coverage (Depth <= 20% Quantile)");
 
-        plots.push(cov_hist);
-        layouts.push(cov_hist_layout);
+                    plots.push(cov_hist);
+                    layouts.push(cov_hist_layout);
+                }
+                Err(err) => warn(
+                    Severity::Warning,
+                    format!("skipping coverage histogram in heuristics plot for '{target}': {err}"),
+                ),
+            }
+        }
     }
 
     if enabled_plots.confidence_hist {
         let confidence_values = all_alleles.confidence_not_mac_errs;
-        let confidence_histogram = kuva_histogram(confidence_values, NUM_BINS)
-            .with_context(|| "confidence histogram subplot")?;
-        let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
-            .with_reference_line(ReferenceLine::vertical(min_conf).with_dasharray("none"))
-            .with_show_grid(false)
-            .with_title("Histogram of confidence of not machine error, non-zero");
+        if confidence_values.is_empty() {
+            warn_plot_error(
+                "heuristics confidence not error histogram",
+                Some(target),
+                &PlotError::MissingData(String::from("no confidence data found")),
+            );
+        } else {
+            match kuva_histogram(confidence_values, NUM_BINS) {
+                Ok(confidence_histogram) => {
+                    let confidence_hist_layout = Layout::auto_from_plots(&confidence_histogram)
+                        .with_reference_line(
+                            ReferenceLine::vertical(min_conf).with_dasharray("none"),
+                        )
+                        .with_show_grid(false)
+                        .with_title("Histogram of confidence of not machine error, non-zero");
 
-        plots.push(confidence_histogram);
-        layouts.push(confidence_hist_layout);
+                    plots.push(confidence_histogram);
+                    layouts.push(confidence_hist_layout);
+                }
+                Err(err) => warn(
+                    Severity::Warning,
+                    format!(
+                        "skipping confidence histogram in heuristics plot for '{target}': {err}"
+                    ),
+                ),
+            }
+        }
+    }
+
+    if plots.is_empty() {
+        return Err(PlotError::MissingData(format!(
+            "could not create heuristics plot for '{target}'; no plottable panels were available"
+        )));
     }
 
     let cols = if plots.len() > 1 { 2 } else { 1 };
@@ -170,9 +254,11 @@ fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {
 
 /// Builds a histogram using explicit bin edges so the rendered plot follows
 /// IRMA/R-style break choices instead of kuva's automatic binning.
-fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
+fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>, PlotError> {
     if data.is_empty() {
-        anyhow::bail!("Histogram plot has no data");
+        return Err(PlotError::MissingData(
+            "histogram plot has no data".to_string(),
+        ));
     }
 
     let breaks = pretty_breaks(&data, num_bins)?;
@@ -190,9 +276,15 @@ fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>> {
 /// This is inspired by the path used by `hist(x, breaks = n)` for ordinary
 /// numeric vectors: use the data range, pick a 1/2/5/10 * 10^k cell width near
 /// the requested width, then expand the endpoints to cell boundaries.
-fn pretty_breaks(data: &[f64], suggested_bins: usize) -> Result<Vec<f64>> {
+///
+/// ## Errors
+///
+/// Can error if the minimum or maximum of the data is not a finite value
+fn pretty_breaks(data: &[f64], suggested_bins: usize) -> Result<Vec<f64>, PlotError> {
     if suggested_bins == 0 {
-        anyhow::bail!("Suggested histogram bin count must be greater than zero");
+        return Err(PlotError::ConfigError(
+            "suggested histogram bin count must be greater than zero".to_string(),
+        ));
     }
 
     let (min, max) = data
@@ -203,7 +295,9 @@ fn pretty_breaks(data: &[f64], suggested_bins: usize) -> Result<Vec<f64>> {
         });
 
     if !min.is_finite() || !max.is_finite() {
-        anyhow::bail!("Histogram breaks require at least one finite value");
+        return Err(PlotError::MissingData(
+            "histogram breaks require at least one finite value".to_string(),
+        ));
     }
 
     // Degenerate ranges need padding so a constant-value histogram still has a

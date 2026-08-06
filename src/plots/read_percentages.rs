@@ -1,16 +1,22 @@
 use crate::{
     config::ParsedConfig,
     data::{ReadCounts, SankeyVec},
+    diagnostics::PlotError,
     plots::{render_multiplot, render_plot},
 };
-use anyhow::{Result, anyhow};
+
 use kuva::{
     Palette,
     plot::{LegendEntry, LegendShape, PiePlot, SankeyPlot, TextPlot},
     prelude::{Figure, Layout, Plot},
 };
 
-pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &ParsedConfig) -> Result<()> {
+/// Creates a kuva sankey plot, and renders it, saving to file
+///
+/// ## Errors
+///
+/// This can pass up an error from the underlying [`render_plot`] function call.
+pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &ParsedConfig) -> Result<(), PlotError> {
     let (plot, layout) = kuva_sankey(sankey_vec);
 
     render_plot(
@@ -30,12 +36,12 @@ fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
-pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()> {
+pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(), PlotError> {
     let paired = match cfg.plot_specific.read_percent.viz_option {
         crate::config::PercentVizOption::Pie(paired) => paired,
         crate::config::PercentVizOption::Sankey => {
-            return Err(anyhow!(
-                "READ_PERCENTAGES pie plot selected without pie configuration"
+            return Err(PlotError::ConfigError(
+                "READ_PERCENTAGES pie plot selected without pie configuration".to_string(),
             ));
         }
     };
@@ -65,7 +71,9 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
     }
 
     if vals.is_empty() {
-        return Err(anyhow!("Empty Totals pie chart in READ_PERCENTAGES"));
+        return Err(PlotError::MissingData(
+            "Empty Totals pie chart in READ_PERCENTAGES".to_string(),
+        ));
     }
     let (legend_entries, total_pie) = kuva_pie(vals, &legend_labels, &pal);
 
@@ -108,7 +116,9 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
     }
 
     if vals.is_empty() {
-        return Err(anyhow!("Empty Pass QC pie chart in READ_PERCENTAGES"));
+        return Err(PlotError::MissingData(
+            "Empty Pass QC pie chart in READ_PERCENTAGES".to_string(),
+        ));
     }
     let (legend_entries, passed_qc_pie) = kuva_pie(vals, &legend_labels, &pal);
 
@@ -140,7 +150,9 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<()>
     };
     let total = vals.iter().sum::<f64>();
     if total == 0.0 {
-        return Err(anyhow!("Empty Matches pie chart in READ_PERCENTAGES"));
+        return Err(PlotError::MissingData(
+            "Empty Matches pie chart in READ_PERCENTAGES".to_string(),
+        ));
     }
     let mut slice_labels = Vec::with_capacity(vals.len());
     for (&val, target) in vals.iter().zip(targets) {

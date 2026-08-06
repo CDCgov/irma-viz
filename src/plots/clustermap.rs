@@ -1,13 +1,14 @@
 use crate::{
     ParsedConfig,
     data::SquareMatrix,
+    diagnostics::PlotError,
     plots::{render_multiplot, render_plot},
 };
-use anyhow::Result;
 use kuva::prelude::*;
 use std::sync::Arc;
 
-/// TODO: Docs
+/// Builds the Kuva clustermap plot for a square matrix using the shared
+/// red-to-light-grey color scale.
 pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
     let colormap = ColorMap::Custom(Arc::new(|t: f64| {
         let t = t.clamp(0.0, 1.0);
@@ -39,12 +40,17 @@ pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
     ]
 }
 
+/// Renders a single clustermap heatmap for one target and matrix type.
+///
+/// ## Errors
+///
+/// Passes up any render or output IO error returned by [`render_plot`].
 pub fn plot_clustermap(
     data: SquareMatrix,
     cfg: &ParsedConfig,
     target: &str,
     matrix_type: &str,
-) -> Result<()> {
+) -> Result<(), PlotError> {
     let plot = kuva_clustermap(data);
     let layout = Layout::auto_from_plots(&plot)
         .with_title(format!("Variant site clusters, {target}-{matrix_type}.sqm"));
@@ -57,12 +63,18 @@ pub fn plot_clustermap(
     )
 }
 
+/// Renders the tree + heatmap multiplot clustermap for one target and matrix
+/// type.
+///
+/// ## Errors
+///
+/// Passes up any render or output IO error returned by [`render_multiplot`].
 pub fn plot_heat_phylo(
     data: SquareMatrix,
     cfg: &ParsedConfig,
     target: &str,
     matrix_type: &str,
-) -> Result<()> {
+) -> Result<(), PlotError> {
     let tree_height = cfg.plot_specific.cluster_config.tree_height;
     let line_placement = 1.0 - tree_height * 0.93;
 
@@ -98,6 +110,8 @@ pub fn plot_heat_phylo(
     )
 }
 
+/// Builds the dendrogram plot and returns the corresponding leaf order used to
+/// align the heatmap rows and columns.
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
     let labels = data.labels.iter().map(|l| l.as_str()).collect::<Vec<_>>();
     let dist = &data.matrix;
@@ -112,6 +126,8 @@ fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
     (vec![blank_tree.into()], leaf_order)
 }
 
+/// Builds the heatmap plot using the dendrogram-derived leaf order and returns
+/// the row labels used for the final layout.
 fn kuva_heatmap(data: &SquareMatrix, leaf_order: Vec<String>) -> (Vec<Plot>, Vec<String>) {
     let dist = &data.matrix;
 

@@ -79,6 +79,13 @@ pub struct SankeyVec {
 }
 
 impl SankeyVec {
+    /// Reads in a READ_COUNTS file and converts it into a parsed [`SankeyVec`]
+    /// format
+    ///
+    /// ## Errors
+    ///
+    /// Can return an IO error if the csv reader is unable to be built from the
+    /// provided path, or if an error occurs while reading a line of csv data
     pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut edges = Vec::new();
 

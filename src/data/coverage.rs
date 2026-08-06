@@ -1,5 +1,4 @@
-use crate::data::*;
-use anyhow::{Result, anyhow};
+use crate::{data::*, diagnostics::PlotError};
 use std::path::Path;
 
 /// TODO: Docs
@@ -19,8 +18,14 @@ pub struct Coverage {
 }
 
 impl Coverage {
-    /// TODO: Docs
-    pub fn import_from_file(filename: &Path) -> Result<Self> {
+    /// Reads a coverage TSV file and parses it for a coverage plot.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an IO error if the csv reader is unable to be built, or a line
+    /// of the csv reader is unable to be parsed, or if the coverage data is
+    /// empty
+    pub fn import_from_file(filename: &Path) -> Result<Self, PlotError> {
         let mut coverage_data = Coverage {
             position: Vec::new(),
             coverage: Vec::new(),
@@ -28,10 +33,13 @@ impl Coverage {
 
         let mut coverage_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
-            .from_path(filename)?;
+            .from_path(filename)
+            .map_err(|err| {
+                PlotError::IOError(format!("opening '{}'", filename.display()), err.into())
+            })?;
 
         for line in coverage_reader.deserialize() {
-            let line: CoverageLine = line?;
+            let line: CoverageLine = line.map_err(|err| PlotError::InvalidData(err.to_string()))?;
 
             match (line.position, line.coverage) {
                 (Some(pos), Some(cov)) => {
@@ -43,7 +51,10 @@ impl Coverage {
         }
 
         if coverage_data.coverage.is_empty() || coverage_data.position.is_empty() {
-            return Err(anyhow!("File has no data."));
+            return Err(PlotError::MissingData(format!(
+                "{} is empty",
+                filename.display()
+            )));
         }
 
         Ok(coverage_data)

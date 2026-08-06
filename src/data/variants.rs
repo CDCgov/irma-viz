@@ -22,6 +22,12 @@ pub struct AllVariants {
 }
 
 impl AllVariants {
+    /// Reads a variants TSV file and parses it for a coverage plot.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an IO error if the csv reader is unable to be built, or a line
+    /// of the csv reader is unable to be parsed
     pub fn import_from_file(filename: &PathBuf) -> std::io::Result<Self> {
         let mut variants = AllVariants {
             positions: Vec::new(),
