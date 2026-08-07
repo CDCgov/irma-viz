@@ -54,7 +54,7 @@ pub fn render_multiplot(
 
     match output_format {
         OutputFormat::Pdf => {
-            let pdf = PdfBackend
+            let pdf = PdfBackend::new()
                 .render_scene(scene)
                 .map_err(anyhow::Error::msg)
                 .with_context(|| format!("Failed to render PDF '{}'", filepath.display()))?;

@@ -13,7 +13,7 @@ toml = "0.9"
 clap = { version = "4", default-features = false, features = ["derive", "help", "std", "usage", "error-context"] }
 anyhow = "1"
 csv = "1"
-kuva = { version = "0.2", features = ["pdf"] }
+kuva = { version = "0.5", features = ["pdf"] }
 
 [profile.dev]
 opt-level = 1
