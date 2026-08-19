@@ -408,8 +408,34 @@ impl ParsedConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Deserialize, Debug)]
+#[serde(rename = "output_format")]
 #[serde(rename_all = "snake_case")]
+pub enum OutputFormatRaw {
+    Pdf,
+    Svg,
+}
+
+impl<'de> Deserialize<'de> for OutputFormat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(match OutputFormatRaw::deserialize(deserializer)? {
+            OutputFormatRaw::Svg => OutputFormat::Svg,
+            OutputFormatRaw::Pdf if cfg!(feature = "pdf") => OutputFormat::Pdf,
+            OutputFormatRaw::Pdf => {
+                warn(
+                    Severity::Warning,
+                    "User specified 'output_format = \"pdf\"' but IRMA-viz not compiled with the PDF feature, switching to SVG.",
+                );
+                OutputFormat::Svg
+            }
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum OutputFormat {
     Pdf,
     Svg,

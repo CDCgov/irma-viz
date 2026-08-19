@@ -97,7 +97,7 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --profile prod --target aarch64-apple-darwin --target x86_64-apple-darwin
+          cargo build --profile prod --features pdf --target aarch64-apple-darwin --target x86_64-apple-darwin
 
       - name: Package Binary
         shell: bash

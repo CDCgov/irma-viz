@@ -43,19 +43,22 @@ pub fn warn(severity: Severity, message: impl Display) {
 pub enum PlotError {
     MissingData(String),
     InvalidData(String),
-    RenderError(String),
     IOError(String, std::io::Error),
     ConfigError(String),
+    /// PDF render error
+    #[cfg(feature = "pdf")]
+    RenderError(String),
 }
 
 impl Display for PlotError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PlotError::MissingData(err) => write!(f, "{err}"),
-            PlotError::RenderError(err) => write!(f, "{err}"),
             PlotError::IOError(context, err) => write!(f, "{context}: {err}"),
             PlotError::ConfigError(err) => write!(f, "{err}"),
             PlotError::InvalidData(err) => write!(f, "{err}"),
+            #[cfg(feature = "pdf")]
+            PlotError::RenderError(err) => write!(f, "{err}"),
         }
     }
 }

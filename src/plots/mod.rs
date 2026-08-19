@@ -1,10 +1,12 @@
 use kuva::{
-    PdfBackend,
     prelude::{Layout, Plot, SvgBackend},
     render::render::Scene,
-    render_to_pdf, render_to_svg,
+    render_to_svg,
 };
 use std::path::Path;
+
+#[cfg(feature = "pdf")]
+use kuva::{PdfBackend, render_to_pdf};
 
 use crate::{config::OutputFormat, diagnostics::PlotError};
 
@@ -30,16 +32,24 @@ pub fn render_plot(
         .as_ref()
         .join(format!("{filename}{}", output_format));
 
-    match output_format {
-        OutputFormat::Pdf => {
-            let pdf = render_to_pdf(plots, layout).map_err(|err| {
-                PlotError::RenderError(format!("render PDF '{}': {err}", filepath.display()))
-            })?;
-            std::fs::write(&filepath, pdf).map_err(|err| {
-                PlotError::IOError(format!("writing '{}'", filepath.display()), err)
-            })?;
-        }
-        OutputFormat::Svg => {
+    cfg_select! {
+        feature = "pdf" => match output_format {
+            OutputFormat::Pdf => {
+                let pdf = render_to_pdf(plots, layout).map_err(|err| {
+                    PlotError::RenderError(format!("render PDF '{}': {err}", filepath.display()))
+                })?;
+                std::fs::write(&filepath, pdf).map_err(|err| {
+                    PlotError::IOError(format!("writing '{}'", filepath.display()), err)
+                })?;
+            }
+            OutputFormat::Svg => {
+                let svg = render_to_svg(plots, layout);
+                std::fs::write(&filepath, svg).map_err(|err| {
+                    PlotError::IOError(format!("writing '{}'", filepath.display()), err)
+                })?;
+            }
+        },
+        _ => {
             let svg = render_to_svg(plots, layout);
             std::fs::write(&filepath, svg).map_err(|err| {
                 PlotError::IOError(format!("writing '{}'", filepath.display()), err)
@@ -58,16 +68,24 @@ pub fn render_multiplot(
 ) -> Result<(), PlotError> {
     let filepath = outpath.as_ref().join(format!("{filename}{output_format}"));
 
-    match output_format {
-        OutputFormat::Pdf => {
-            let pdf = PdfBackend::new().render_scene(scene).map_err(|err| {
-                PlotError::RenderError(format!("render PDF '{}': {err}", filepath.display()))
-            })?;
-            std::fs::write(&filepath, pdf).map_err(|err| {
-                PlotError::IOError(format!("writing '{}'", filepath.display()), err)
-            })?;
-        }
-        OutputFormat::Svg => {
+    cfg_select! {
+        feature = "pdf" => match output_format {
+            OutputFormat::Pdf => {
+                let pdf = PdfBackend::new().render_scene(scene).map_err(|err| {
+                    PlotError::RenderError(format!("render PDF '{}': {err}", filepath.display()))
+                })?;
+                std::fs::write(&filepath, pdf).map_err(|err| {
+                    PlotError::IOError(format!("writing '{}'", filepath.display()), err)
+                })?;
+            }
+            OutputFormat::Svg => {
+                let svg = SvgBackend.render_scene(scene);
+                std::fs::write(&filepath, svg).map_err(|err| {
+                    PlotError::IOError(format!("writing '{}'", filepath.display()), err)
+                })?;
+            }
+        },
+        _ => {
             let svg = SvgBackend.render_scene(scene);
             std::fs::write(&filepath, svg).map_err(|err| {
                 PlotError::IOError(format!("writing '{}'", filepath.display()), err)

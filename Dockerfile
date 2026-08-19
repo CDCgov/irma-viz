@@ -23,7 +23,7 @@ WORKDIR /build
 
 COPY . .
 
-RUN cargo build --profile prod && cargo test
+RUN cargo build --profile prod --features pdf && cargo test
 
 FROM scratch AS binary-export
 

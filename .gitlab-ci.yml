@@ -29,10 +29,7 @@ irma-viz-test:
     - perl .github/scripts/check_versions_changelog.pl
     - cargo test
     - cargo doc --no-deps --document-private-items
-  artifacts:
-    paths:
-      - target/doc
-    expire_in: 12 hours
+
 
 pages:
   stage: deploy
@@ -44,6 +41,7 @@ pages:
   dependencies:
     - irma-viz-test
   script:
+    - cargo doc --no-deps --document-private-items
     - mv target/doc public/
     - echo "<meta http-equiv=\"refresh\" content=\"0; url=irma_viz\">" > public/index.html
   artifacts:
