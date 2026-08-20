@@ -28,12 +28,6 @@ pub struct IOConfig {
     pub matrix_path: PathBuf,
 }
 
-#[derive(Debug)]
-pub struct ConfigMergeSummary {
-    pub cfg: ParsedConfig,
-    pub had_config_failures: bool,
-}
-
 /// takes the input root for an IRMA run and returns paths for the `tables/` and `matrices/` directories
 pub fn get_directory_paths(input_root: &Path) -> (PathBuf, PathBuf) {
     (input_root.join("tables"), input_root.join("matrices"))
@@ -162,37 +156,31 @@ fn disable_if_invalid(
     enabled_plots: &mut HeuristicsPlots,
     disable_plots: impl FnOnce(&mut HeuristicsPlots),
     warning_suffix: &str,
-) -> bool {
+) {
     if !plots_enabled {
-        return false;
+        return;
     }
 
     if let Err(err) = validation {
         warn(Severity::Warning, format!("{err}; {warning_suffix}"));
         disable_plots(enabled_plots);
-        return true;
     }
-
-    false
 }
 
 /// Validates the heuristics thresholds and disables the corresponding
-/// heuristics subplots for invalid values. Returns a boolean for if invalid
-/// arguments were found
+/// heuristics subplots for invalid values.
 fn validate_or_disable_heuristics(
     heuristics: HeuristicsCLI,
     toggles: &mut PlotToggles,
     enabled_plots: &mut HeuristicsPlots,
-) -> bool {
+) {
     if !toggles.heuristics {
         // don't need to bother validating, no heuristics plot being created
-        return false;
+        return;
     }
 
-    let mut had_config_failures = false;
-
     // --min-variant-frequency disables allele_frequency and frequency_subplot
-    had_config_failures |= disable_if_invalid(
+    disable_if_invalid(
         validate_finite_range(
             "--min-variant-frequency",
             heuristics.min_variant_frequency,
@@ -209,7 +197,7 @@ fn validate_or_disable_heuristics(
     );
 
     // --min-confidence-not-sequencer-error disables confidence_hist
-    had_config_failures |= disable_if_invalid(
+    disable_if_invalid(
         validate_finite_range(
             "--min-confidence-not-sequencer-error",
             heuristics.min_confidence_not_sequencer_error,
@@ -223,7 +211,7 @@ fn validate_or_disable_heuristics(
     );
 
     // --min-variant-average-quality disables allele_quality and quality_subplot
-    had_config_failures |= disable_if_invalid(
+    disable_if_invalid(
         validate_finite_range(
             "min-variant-average-quality",
             heuristics.min_variant_average_quality,
@@ -250,7 +238,7 @@ fn validate_or_disable_heuristics(
     } else {
         Ok(())
     };
-    had_config_failures |= disable_if_invalid(
+    disable_if_invalid(
         depth_validation,
         enabled_plots.coverage_depth_hist,
         enabled_plots,
@@ -267,10 +255,7 @@ fn validate_or_disable_heuristics(
             ),
         );
         toggles.heuristics = false;
-        had_config_failures = true;
     }
-
-    had_config_failures
 }
 
 fn validate_finite_range(name: &str, value: f64, min: f64, max: f64) -> Result<(), PlotError> {
@@ -283,23 +268,20 @@ fn validate_finite_range(name: &str, value: f64, min: f64, max: f64) -> Result<(
 }
 
 impl PlotSpecificConfig {
-    /// Merges the plot specific arguments from the TOML and CLI, and performs
-    /// validation on them. Returns a a [`PlotSpecificConfig`] and a boolean for
-    /// if invalid arguments were encountered
+    /// Merges the plot-specific arguments from the TOML and CLI and validates
+    /// them.
     fn merge_plot_specifics(
         toml: PlotSpecificTOML,
         cli: PlotSpecificCLI,
         toggles: &mut PlotToggles,
-    ) -> (Self, bool) {
+    ) -> Self {
         // coverage options are only provided via TOML
         let coverage = toml.coverage;
-        let mut had_config_failures = false;
 
         // heuristics options are only provided via CLI
         let mut enabled_plots = toml.heuristics.enabled_plots;
         // disables heuristics subplots whose relevant thresholds are invalid
-        had_config_failures |=
-            validate_or_disable_heuristics(cli.heuristics_args, toggles, &mut enabled_plots);
+        validate_or_disable_heuristics(cli.heuristics_args, toggles, &mut enabled_plots);
         let HeuristicsCLI {
             min_variant_average_quality: min_aq,
             min_variant_frequency: min_f,
@@ -328,7 +310,6 @@ impl PlotSpecificConfig {
                                 "READ_PERCENTAGES plot enabled with 'Pie' selected for viz_option, but `--paired` CLI argument not provided. Skipping READ_PERCENTAGES".to_string(),
                             );
                             toggles.read_percentages = false;
-                            had_config_failures = true;
                         }
                         false
                     }
@@ -356,20 +337,16 @@ impl PlotSpecificConfig {
                 Err(err) => {
                     warn(Failure, format!("{err}, skipping Clustermap plots"));
                     toggles.clustermap = false;
-                    had_config_failures = true;
                 }
             }
         }
 
-        (
-            PlotSpecificConfig {
-                coverage,
-                read_percent,
-                cluster_config,
-                heuristic,
-            },
-            had_config_failures,
-        )
+        PlotSpecificConfig {
+            coverage,
+            read_percent,
+            cluster_config,
+            heuristic,
+        }
     }
 }
 
@@ -383,7 +360,7 @@ pub struct ParsedConfig {
 impl ParsedConfig {
     /// Merges all configuration options from the TOML and CLI into a
     /// [`ParsedConfig`] and performs validation on those options.
-    pub fn merge_configs(toml: TOMLConfig, cli: CLIConfig) -> ConfigMergeSummary {
+    pub fn merge_configs(toml: TOMLConfig, cli: CLIConfig) -> ParsedConfig {
         // takes the io args from the cli and pairs them with the output format
         // from the TOML
         let io_args = cli.io_args.parse_io_args(toml.output_options.output_format);
@@ -391,19 +368,16 @@ impl ParsedConfig {
         let mut plot_toggles =
             PlotToggles::merge_plot_toggles(toml.plot_toggles, cli.enabled_plots);
 
-        let (plot_specific, had_config_failures) = PlotSpecificConfig::merge_plot_specifics(
+        let plot_specific = PlotSpecificConfig::merge_plot_specifics(
             toml.plot_specific,
             cli.plot_specific_args,
             &mut plot_toggles,
         );
 
-        ConfigMergeSummary {
-            cfg: ParsedConfig {
-                plot_toggles,
-                io_args,
-                plot_specific,
-            },
-            had_config_failures,
+        ParsedConfig {
+            plot_toggles,
+            io_args,
+            plot_specific,
         }
     }
 }

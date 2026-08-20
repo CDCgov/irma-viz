@@ -1,15 +1,11 @@
 use crate::{
     config::{
-        CLIConfig, ClusterOption, ClusterTargets, ConfigMergeSummary, MatrixType, ParsedConfig,
-        PercentVizOption, discover_clustermap_targets, discover_coverage_targets,
-        discover_heuristics_targets, load_config,
+        CLIConfig, ClusterOption, ClusterTargets, MatrixType, ParsedConfig, PercentVizOption,
+        discover_clustermap_targets, discover_coverage_targets, discover_heuristics_targets,
+        load_config,
     },
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
-    diagnostics::{
-        PlotError,
-        Severity::{self},
-        print_results, warn,
-    },
+    diagnostics::{PlotError, Severity, print_results, warn, warn_plot_error},
     plots::{
         clustermap::{plot_clustermap, plot_heat_phylo},
         coverage::plot_coverage,
@@ -18,7 +14,7 @@ use crate::{
     },
 };
 use clap::Parser;
-use std::{fs, process::ExitCode};
+use std::fs;
 
 mod config;
 mod data;
@@ -27,38 +23,8 @@ mod demo;
 mod diagnostics;
 mod plots;
 
-const EXIT_PARTIAL_FAILURE: u8 = 3;
-
-#[derive(Debug, Default)]
-struct PlotRunSummary {
-    rendered: Vec<String>,
-    had_failures: bool,
-}
-
-/// Warns that a specific plot (with optional target) is being skipped, because
-/// of the provided error. Wraps the warning in the [`warn`] function to provide
-/// time stamp.
-///
-/// Always uses the [`Severity::Warning`] type, since this is
-/// severity level we would expect for a single plot within a plot type failing
-/// to be created
-fn warn_plot_error(plot_type: &str, target: Option<&str>, err: &PlotError) {
-    match target {
-        Some(target) => warn(
-            Severity::Warning,
-            format!("skipping {plot_type} plot for '{target}': {err}"),
-        ),
-        None => warn(
-            Severity::Warning,
-            format!("skipping {plot_type} plot: {err}"),
-        ),
-    }
-}
-
 /// Run the program
-fn main() -> ExitCode {
-    let mut exit_code = ExitCode::SUCCESS;
-
+fn main() {
     let cli = CLIConfig::parse();
     let config_path = cli.config.clone();
     #[cfg(feature = "demo")]
@@ -70,18 +36,12 @@ fn main() -> ExitCode {
         Ok(toml) => toml,
         Err(err) => {
             warn(Severity::Failure, err);
-            return ExitCode::FAILURE;
+            // return early bc of invalid config
+            return;
         }
     };
 
-    let ConfigMergeSummary {
-        cfg,
-        had_config_failures,
-    } = ParsedConfig::merge_configs(toml, cli);
-
-    if had_config_failures {
-        exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
-    }
+    let cfg = ParsedConfig::merge_configs(toml, cli);
 
     #[cfg(feature = "demo")]
     if let Some(target) = demo_target.as_deref() {
@@ -92,7 +52,8 @@ fn main() -> ExitCode {
             .map_err(|err| PlotError::IOError("creating demo output directory".to_string(), err))
         {
             warn(Severity::Failure, err);
-            return ExitCode::FAILURE;
+            // exit early because unable to write to invalid directory
+            return;
         }
 
         return match demo::run_demo(&mut cfg, target)
@@ -103,11 +64,9 @@ fn main() -> ExitCode {
                     Severity::Success,
                     format!("rendered demo bundle for target '{target}'"),
                 );
-                ExitCode::SUCCESS
             }
             Err(err) => {
                 warn(Severity::Failure, err);
-                ExitCode::FAILURE
             }
         };
     }
@@ -116,30 +75,27 @@ fn main() -> ExitCode {
         .map_err(|err| PlotError::IOError("creating output directory".to_string(), err))
     {
         warn(Severity::Failure, err);
-        return ExitCode::FAILURE;
+        // exit early because unable to write to invalid directory
+        return;
     }
 
     // runs read_percentages and handles possible io or rendering errors that
     // could arise
-    if cfg.plot_toggles.read_percentages
-        && let Err(err) = run_read_percentages(&cfg)
-    {
-        warn_plot_error("read_percentages", None, &err);
-        exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
+    if cfg.plot_toggles.read_percentages {
+        if let Err(err) = run_read_percentages(&cfg) {
+            warn_plot_error("read_percentages", None, &err);
+        } else {
+            warn(Severity::Success, "Created READ_PERCENTAGES plot")
+        }
     }
 
     if cfg.plot_toggles.heuristics {
         match run_heuristics(&cfg) {
             Ok(summary) => {
-                let had_partial_failure = summary.had_failures || summary.rendered.is_empty();
-                print_results(summary.rendered, "heuristics");
-                if had_partial_failure {
-                    exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
-                }
+                print_results(summary, "heuristics");
             }
             Err(err) => {
                 warn(Severity::Failure, err);
-                exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
             }
         }
     }
@@ -147,16 +103,11 @@ fn main() -> ExitCode {
     if cfg.plot_toggles.coverage {
         match run_coverage(&cfg) {
             Ok(summary) => {
-                let had_partial_failure = summary.had_failures || summary.rendered.is_empty();
-                print_results(summary.rendered, "coverage");
-                if had_partial_failure {
-                    exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
-                }
+                print_results(summary, "coverage");
             }
 
             Err(err) => {
                 warn(Severity::Failure, err);
-                exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
             }
         }
     }
@@ -164,19 +115,13 @@ fn main() -> ExitCode {
     if cfg.plot_toggles.clustermap {
         match run_clustermap(&cfg) {
             Ok(summary) => {
-                let had_partial_failure = summary.had_failures || summary.rendered.is_empty();
-                print_results(summary.rendered, "clustermap");
-                if had_partial_failure {
-                    exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
-                }
+                print_results(summary, "clustermap");
             }
             Err(err) => {
                 warn(Severity::Failure, err);
-                exit_code = ExitCode::from(EXIT_PARTIAL_FAILURE);
             }
         }
     }
-    exit_code
 }
 
 /// Checks if the output directory exists, otherwise creates it.
@@ -230,22 +175,21 @@ fn run_read_percentages(cfg: &ParsedConfig) -> Result<(), PlotError> {
 
 /// Discovers all possible heuristics targets, then attempts to plot each one,
 /// using [`run_heuristics_for_target`]. Errors that arise during plot creation
-/// are handled and reported within the loop. Returns a [`PlotRunSummary`] of
-/// rendered targets and whether any targets failed.
+/// are handled and reported within the loop. Returns a list of the successfully
+/// rendered targets.
 ///
 /// ## Errors
 ///
 /// Will return an error if IO operations within [`discover_heuristics_targets`]
 /// fail.
-fn run_heuristics(cfg: &ParsedConfig) -> Result<PlotRunSummary, PlotError> {
+fn run_heuristics(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
     let targets = discover_heuristics_targets(cfg)?;
-    let mut summary = PlotRunSummary::default();
+    let mut summary = Vec::new();
     for target in targets {
         let res = run_heuristics_for_target(cfg, &target);
         match res {
-            Ok(_) => summary.rendered.push(target),
+            Ok(_) => summary.push(target),
             Err(err) => {
-                summary.had_failures = true;
                 warn_plot_error("heuristics", Some(&target), &err);
             }
         }
@@ -277,21 +221,21 @@ fn run_heuristics_for_target(cfg: &ParsedConfig, target: &str) -> Result<(), Plo
 
 /// Discovers all possible coverage targets, then attempts to plot each one,
 /// using [`run_coverage_for_target`]. Errors that arise during plot creation
-/// are handled and reported within the loop. Returns a [`PlotRunSummary`] of
-/// rendered targets and whether any targets failed.
+/// are handled and reported within the loop. Returns a list of the successfully
+/// rendered targets.
 ///
 /// ## Errors
 ///
 /// Will return an error if IO operations within [`discover_coverage_targets`]
 /// fail.
-fn run_coverage(cfg: &ParsedConfig) -> Result<PlotRunSummary, PlotError> {
+fn run_coverage(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
     let coverage_targets = discover_coverage_targets(cfg)?;
-    let mut summary = PlotRunSummary::default();
+    let mut summary = Vec::new();
+
     for target in coverage_targets {
         match run_coverage_for_target(cfg, &target) {
-            Ok(_) => summary.rendered.push(target),
+            Ok(_) => summary.push(target),
             Err(err) => {
-                summary.had_failures = true;
                 warn_plot_error("coverage", Some(&target), &err);
             }
         }
@@ -351,26 +295,23 @@ fn run_coverage_for_target(cfg: &ParsedConfig, target: &str) -> Result<(), PlotE
 
 /// Discovers all possible clustermap targets, then attempts to plot each one,
 /// using [`run_clustermap_for_target`]. Errors that arise during plot creation
-/// are handled and reported within the loop. Returns a [`PlotRunSummary`] of
-/// rendered target-matrix pairs and whether any targets failed.
+/// are handled and reported within the loop. Returns a list of the successfully
+/// rendered target-matrix pairs.
 ///
 /// ## Errors
 ///
-/// Will return an error if IO operations within
-/// [`discover_clustermap_targets`] fail.
-fn run_clustermap(cfg: &ParsedConfig) -> Result<PlotRunSummary, PlotError> {
+/// Will return an error if IO operations within [`discover_clustermap_targets`]
+/// fail.
+fn run_clustermap(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
     let cluster_targets = discover_clustermap_targets(cfg)?;
-    let mut summary = PlotRunSummary::default();
+    let mut summary = Vec::new();
 
     for target in cluster_targets.variant_targets() {
         match run_clustermap_for_target(cfg, &cluster_targets, &target) {
-            Ok(rendered_matrix_types) if !rendered_matrix_types.is_empty() => {
-                summary.rendered.extend(rendered_matrix_types)
+            Ok(target_summary) => {
+                summary.extend(target_summary);
             }
-            // skips if it's empty
-            Ok(_) => {}
             Err(err) => {
-                summary.had_failures = true;
                 warn_plot_error("clustermap", Some(&target), &err);
             }
         }
@@ -387,7 +328,8 @@ fn run_clustermap(cfg: &ParsedConfig) -> Result<PlotRunSummary, PlotError> {
 /// Passes up an error if there is an error parsing [`AllVariants`], if fewer
 /// than two variants are present for the target, or if IO errors arise while
 /// preparing clustermap inputs. Errors from individual matrix-type renders are
-/// handled and reported within the loop.
+/// handled and reported within the loop. Returns a list of successfully
+/// rendered target-matrix pairs.
 fn run_clustermap_for_target(
     cfg: &ParsedConfig,
     cluster_targets: &ClusterTargets,
@@ -424,13 +366,11 @@ fn run_clustermap_for_target(
         )));
     }
 
-    let mut rendered_matrix_types = Vec::new();
+    let mut summary = Vec::new();
 
     for matrix_type in clustermap_targets {
         match run_clustermap_for_matrix_type(cfg, target, matrix_type) {
-            Ok(()) => {
-                rendered_matrix_types.push(format!("{target}-{}", matrix_type.display_name()))
-            }
+            Ok(()) => summary.push(format!("{target}-{}", matrix_type.display_name())),
             Err(err) => {
                 let plot_type = match cfg.plot_specific.cluster_config.cluster_option {
                     ClusterOption::Clustermap => {
@@ -443,7 +383,7 @@ fn run_clustermap_for_target(
         }
     }
 
-    Ok(rendered_matrix_types)
+    Ok(summary)
 }
 
 /// Imports the matrix data and creates a clustermap or tree plot for a single

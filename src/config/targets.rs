@@ -71,6 +71,7 @@ pub fn discover_heuristics_targets(cfg: &ParsedConfig) -> Result<BTreeSet<String
     let mut heuristics_targets = BTreeSet::new();
     let possible_heuristics_targets =
         discover_candidate_targets(&cfg.io_args.table_path, HEURISTICS_REQUIRED_SUFFIXES)?;
+
     for possible_target in possible_heuristics_targets {
         let required_heuristics_files = required_target_files(
             &cfg.io_args.table_path,
@@ -102,6 +103,7 @@ pub fn discover_coverage_targets(cfg: &ParsedConfig) -> Result<BTreeSet<String>,
     // all of the potential targets we see
     let possible_coverage_targets =
         discover_candidate_targets(&cfg.io_args.table_path, COVERAGE_REQUIRED_TABLE_SUFFIXES)?;
+
     // for each possible target, we need to check if we have all of the required files for it
     for possible_target in possible_coverage_targets {
         let required_coverage_files = required_target_files(

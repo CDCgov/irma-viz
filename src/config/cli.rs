@@ -9,7 +9,7 @@ pub struct CLIConfig {
     #[command(flatten)]
     pub io_args: IOArgsCLI,
     /// Path to config TOML
-    #[arg(long, short = 'c', default_value = "config.toml")]
+    #[arg(long, short = 'c', default_value = "irma-viz-config.toml")]
     pub config: String,
     /// Render one example of every plot type for a single explicit target.
     /// Only available when built with the `demo` feature.

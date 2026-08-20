@@ -7,8 +7,8 @@ mod toml;
 pub use cli::CLIConfig;
 pub use matrices::MatrixType;
 pub use parsed_config::{
-    ClusterOption, ConfigMergeSummary, CoverageColorOption, HeuristicsConfig, OutputFormat,
-    ParsedConfig, PercentVizOption,
+    ClusterOption, CoverageColorOption, HeuristicsConfig, OutputFormat, ParsedConfig,
+    PercentVizOption,
 };
 #[cfg(feature = "demo")]
 pub use targets::is_valid_target_name;
