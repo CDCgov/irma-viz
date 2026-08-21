@@ -1,6 +1,9 @@
+//! Parsing for target-specific IRMA `*-variants.txt` tables.
+
 use crate::data::*;
 use std::path::PathBuf;
 
+/// A deserialized minority-variant row from an IRMA `*-variants.txt` table.
 #[derive(serde::Deserialize, Debug, Clone, Copy)]
 pub struct Variant {
     #[serde(rename = "Position")]
@@ -13,16 +16,25 @@ pub struct Variant {
     pub minority_frequency: f64,
 }
 
+/// Column-oriented minority-variant data for one IRMA target.
+///
+/// All parallel vectors preserve source-file order. Frequency values and their
+/// observed bounds are stored in [`MinorityFrequencies`].
 #[derive(Debug, Clone)]
 pub struct AllVariants {
+    /// Variant positions in source-file order.
     pub positions: Vec<usize>,
+    /// Consensus alleles corresponding to [`AllVariants::positions`].
     pub consensus_alleles: Vec<char>,
+    /// Minority alleles corresponding to [`AllVariants::positions`].
     pub minority_alleles: Vec<char>,
+    /// Minority frequencies corresponding to [`AllVariants::positions`].
     pub minority_frequencies: MinorityFrequencies,
 }
 
 impl AllVariants {
-    /// Reads a variants TSV file and parses it for a coverage plot.
+    /// Reads a target's `*-variants.txt` TSV into column-oriented variant data
+    /// for a coverage plot.
     ///
     /// ## Errors
     ///
@@ -66,8 +78,10 @@ impl AllVariants {
     }
 }
 
+/// Minority-allele frequencies and extrema accumulated during parsing.
 #[derive(Debug, Clone)]
 pub struct MinorityFrequencies {
+    /// Frequency values in source-file order.
     pub data: Vec<f64>,
     pub min: f64,
     pub max: f64,

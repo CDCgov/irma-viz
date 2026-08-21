@@ -1,3 +1,5 @@
+//! Configuration parsing, validation, and IRMA target discovery.
+
 mod cli;
 mod matrices;
 mod parsed_config;

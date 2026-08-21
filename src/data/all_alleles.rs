@@ -1,3 +1,5 @@
+//! Parsing for target-specific IRMA `*-allAlleles.txt` tables.
+
 use crate::{data::*, diagnostics::PlotError};
 use std::path::Path;
 
@@ -16,9 +18,12 @@ struct AllAllelesLine {
     #[serde(rename = "ConfidenceNotMacErr", deserialize_with = "option_float")]
     confidence_not_mac_err: Option<f64>,
 }
-/// Parsed data from an IRMA `*-allAlleles.txt` table for one target.
-/// The totals are trimmed to the low-coverage quantile used by the coverage
-/// histogram, while frequencies, qualities, and confidence values are retained for their plots.
+
+/// Parsed values from one target's IRMA `*-allAlleles.txt` table.
+///
+/// Coverage totals at or below the 20th-percentile threshold are retained for
+/// the low-depth histogram. `NA` qualities and confidences are skipped, and
+/// only positive confidence values are retained.
 pub struct AllAlleles {
     pub totals: Totals,
     pub frequencies: Vec<f64>,
@@ -27,10 +32,11 @@ pub struct AllAlleles {
 }
 
 impl AllAlleles {
-    /// Reads an all-alleles TSV file and extracts the columns used by the
-    /// heuristics figure. Missing quality/confidence values are skipped, zero
-    /// confidence values are excluded, and totals are filtered to the
-    /// configured quantile.
+    /// Reads an all-alleles TSV file into the values used by the heuristics
+    /// figure.
+    ///
+    /// `NA` quality and confidence cells are skipped, zero confidence values
+    /// are excluded, and totals above the 20th percentile are discarded.
     ///
     /// ## Errors
     ///
@@ -104,12 +110,14 @@ impl AllAlleles {
     }
 }
 
+/// Non-`NA` average-allele qualities and their observed bounds.
 pub struct AverageQualities {
     pub data: Vec<f64>,
     pub min: f64,
     pub max: f64,
 }
 
+/// Coverage totals retained for the low-depth histogram.
 pub struct Totals {
     pub data: Vec<f64>,
     pub upper_quantile: f64,

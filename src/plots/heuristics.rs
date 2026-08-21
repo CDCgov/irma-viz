@@ -1,3 +1,5 @@
+//! Heuristic diagnostic figures for target-specific all-alleles data.
+
 use crate::{
     config::{HeuristicsConfig, ParsedConfig},
     data::AllAlleles,
@@ -7,7 +9,9 @@ use crate::{
 };
 use kuva::{plot::Histogram, prelude::*};
 
-const NUM_BINS: usize = 50; // from IRMA
+// target number of bins for histogram. Value from original IRMA R-script
+const NUM_BINS: usize = 50;
+// Number of sample points used to render each kernel-density curve.
 const SAMPLES: usize = 1000;
 
 /// Creates a heuristics multiplot for a target. Each of the six subplots can be
@@ -229,6 +233,8 @@ pub fn plot_heuristics(
     )
 }
 
+/// Builds a Silverman-bandwidth kernel-density curve and y bounds over an x
+/// interval.
 fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {
     let bw = kuva::silverman_bandwidth(data);
     let n = data.len() as f64;

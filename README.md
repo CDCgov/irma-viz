@@ -1,4 +1,4 @@
-# IRMA-Viz
+# irma-viz
 
 ## Overview
 
@@ -21,19 +21,20 @@ streamlined analysis workflows.
 
 ## Features
 
-`irma-viz` reads an IRMA output directory containing `tables/` and `matrices/`
-subdirectories, discovers viral `ctype`s (compound type) from the files that are
-present, and renders:
+`irma-viz` reads an IRMA out directory containing `tables/` and `matrices/`
+subdirectories, discovers candidate `ctype`s (compound-types) independently for
+each figure, if applicable, and renders the enabled plots.
 
-- `READ_PERCENTAGES` as either a sankey diagram or array of pie charts
-- `{ctype}-heuristics`
-- `{ctype}-coverageDiagram`
-- `{ctype}-{matrix-type}` for each enabled clustermap matrix type when
-  matching matrix and variants inputs are present and the variants file has more
-  than one variant
+| Figure                                     | Required input                                                                                                                             |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `READ_PERCENTAGES` Sankey or pie dashboard | `tables/READ_COUNTS.txt`                                                                                                                   |
+| `{target}-heuristics`                      | `tables/{target}-allAlleles.txt`                                                                                                           |
+| `{target}-coverageDiagram`                 | `tables/{target}-variants.txt`, `tables/{target}-coverage.txt`, and `tables/{target}-pairingStats.txt`                                     |
+| `{target}-{matrix-type}`                   | `tables/{target}-variants.txt` and an enabled `matrices/{target}-{matrix-type}.sqm`; the variants table must contain more than one variant |
 
-All plots can be created either in `.pdf` or `.svg` format, with `.pdf` set as
-the default in the `config.toml`
+Figures can be exported in `.pdf` or `.svg` formats. The format is selected by
+`[output_options].output_format` in `irma-viz-config.toml`, with the supplied
+default selecting `.pdf`.
 
 ## Build
 
@@ -43,8 +44,10 @@ cargo build --profile prod
 
 ## Run
 
+To run `irma-viz`, use the following command. You may need to replace `irma-viz` with a path to the binary, or use `cargo run --` if it is not already compiled.
+
 ```bash
-cargo run -- --input-root path/to/irma-run --paired true
+irma-viz --input-root path/to/irma-run --paired true
 ```
 
 Note: if `READ_PERCENTAGES` plots are toggled on, and `viz_option = "pie"`
@@ -53,41 +56,53 @@ required CLI argument. Otherwise, the argument is not required or read.
 
 ### Demo
 
-With the `demo` feature enabled, you can render one SVG for each plot type for
-an explicit target:
+With the `demo` feature enabled, you can render the repository's demo assets
+for an explicit target:
 
 ```bash
-cargo run --features demo -- --input-root path/to/irma-run --demo-target A_NP --paired true
+cargo build --features demo
+
+irma-viz --input-root path/to/irma-run --demo-target A_NP --paired true
 ```
+
+Demo mode always writes SVGs to `demo/`. It renders read-percentage plots in
+both styles, coverage plots in both color modes, one heuristics figure, a
+heatmap and heatmap-with-tree figure, and `combined.svg`, which combines all of
+the aforementioned plots into one grid. It requires the inputs for all of those
+figures, including more than one variant and an available matrix.
 
 ### Config
 
-The binary loads a `TOML` config, then applies CLI overrides on top. The path to
-the config `TOML` is assumed to be in the current working directory, unless
-otherwise specified.
+The binary loads a TOML configuration, then applies CLI overrides. By default,
+it reads `irma-viz-config.toml` from the current working directory; use
+`--config` to select another path. The configuration must include every table
+shown in the supplied [`irma-viz-config.toml`](irma-viz-config.toml).
 
 The `--input-root` (`-i`) must be specified, and should be the base path of the
-`IRMA` run, where `IRMA-viz` expects a `matrices/` and `tables/` directory.
+IRMA run, where `irma-viz` expects `matrices/` and `tables/` directories for
+ctype-specific figures.
+
+The output path is `path/to/input-root/figures` unless otherwise specified. The
+output directory is created if it does not yet exist.
 
 Since the heuristics thresholds `--min-variant-average-quality`,
 `--min-variant-frequency`, `--min-variant-depth`, and
 `--min-confidence-not-sequencer-error` are expected to vary by IRMA module, they
-are passed via CLI. If omitted, IRMA-viz uses the defaults listed below. The
-output path will be in `input-root/figures` unless otherwise specified.
+are passed via CLI. If omitted, `irma-viz` uses the defaults listed below.
 
 ## Arguments
 
 ### General CLI Arguments and Plot Toggles
 
-| Parameter              | Default                      | Kind    | Description                                                                                                                          |
-| ---------------------- | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `--input-root` (`-i`)  | This argument is required    | Path    | The path to the base directory of an IRMA run                                                                                        |
-| `--output-path` (`-o`) | `path/to/input/root/figures` | Path    | Output directory for the generated figures                                                                                           |
-| `--config` (`-c`)      | `./config.toml`              | Path    | Path to config file. The default assumes that the file exists in the working directory                                               |
-| `--read-percentages`   | True                         | Boolean | Toggles generation of the `READ_PERCENTAGES` figure for the entire `IRMA` run                                                        |
-| `--heuristics`         | True                         | Boolean | Toggles generation of the `{ctype}_heuristics` figure for any discovered ctypes in the `IRMA` run                                    |
-| `--coverage`           | True                         | Boolean | Toggles generation of the `{ctype}_coverageDiagram` figure of any discovered ctypes in the `IRMA` run                                |
-| `--clustermap`         | True                         | Boolean | Toggles generation of the clustermaps if two or more variants are identified for a sample. See [Clustermap](#clustermap) for details |
+| Parameter              | Default                      | Kind    | Description                                                                                                           |
+| ---------------------- | ---------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `--input-root` (`-i`)  | This argument is required    | Path    | The path to the base directory of an IRMA run                                                                         |
+| `--output-path` (`-o`) | `path/to/input/root/figures` | Path    | Output directory for the generated figures                                                                            |
+| `--config` (`-c`)      | `./irma-viz-config.toml`     | Path    | TOML configuration path, relative to the current directory by default                                                 |
+| `--read-percentages`   | `true` in `config.toml`      | Boolean | Overrides generation of the run-level `READ_PERCENTAGES` figure                                                       |
+| `--heuristics`         | `true` in `config.toml`      | Boolean | Overrides generation of `{ctype}-heuristics` figures for discovered targets                                           |
+| `--coverage`           | `true` in `config.toml`      | Boolean | Overrides generation of `{ctype}-coverageDiagram` figures for discovered targets                                      |
+| `--clustermap`         | `true` in `config.toml`      | Boolean | Overrides generation of enabled (ctype, matrix) clustermaps with more than one variant; see [Clustermap](#clustermap) |
 
 ### Plot-Specific CLI Arguments
 
@@ -95,49 +110,50 @@ These options are provided by CLI. The heuristics parameters are used only for
 plot reference lines and axis boundaries; changing them does not recalculate the
 underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 
-| Parameter                              | Plot             | Default | Kind    | Description                                                                                                                                                                            |
-| -------------------------------------- | ---------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--min-variant-average-quality`        | heuristics       | 24.0    | [0,64]  | Minimum average allele quality score heuristic for calling insertion & single nucleotide variants                                                                                      |
-| `--min-variant-frequency`              | heuristics       | 0.008   | [0,1]   | Minimum frequency heuristic for calling single nucleotide variants                                                                                                                     |
-| `--min-variant-depth`                  | heuristics       | 100     | ≥ 1     | Minimum coverage depth heuristic (total coverage count) for calling variants                                                                                                           |
-| `--min-confidence-not-sequencer-error` | heuristics       | 0.8     | [0,1]   | Minimum confidence not machine error for single nucleotide variants                                                                                                                    |
-| `--paired`                             | read-percentages | None    | boolean | Whether the sample used paired-end reads. Only affects the description text on the read-percentages plot. Required if `READ_PERCENTAGES` figure is enabled and `viz_option` is `"pie"` |
-| `--tree-height`                        | clustermap       | 0.78    | [0,1]   | Tree height for agglomerative clustering of variant sites when `cluster_option = "tree"`                                                                                               |
+| Parameter                              | Plot             | Default                          | Type     | Description                                                                                                              |
+| -------------------------------------- | ---------------- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `--min-variant-average-quality`        | heuristics       | 24.0                             | \[0,64\] | Average-allele-quality reference line and zoom-panel upper bound                                                         |
+| `--min-variant-frequency`              | heuristics       | 0.008                            | \[0,1\]  | Minority-allele-frequency reference line and zoom-panel upper bound                                                      |
+| `--min-variant-depth`                  | heuristics       | 100                              | ≥ 1      | Coverage-depth histogram reference line                                                                                  |
+| `--min-confidence-not-sequencer-error` | heuristics       | 0.8                              | \[0,1\]  | Confidence histogram reference line                                                                                      |
+| `--paired`                             | read-percentages | Required for enabled pie output  | Boolean  | Selects paired-end wording in the pie dashboard if `viz_option = "pie"` is set; otherwise is not read                    |
+| `--tree-height`                        | clustermap       | `0.78` in `irma-viz-config.toml` | \[0,1\]  | Overrides the displayed dendrogram cutoff line in the clustermap if `cluster_option = "tree"` is set; otherwise not used |
 
 ### General TOML Options and Plot Toggles
 
-The `config.toml` features the ability to set the output file format and toggle
-plots on and off. The plot toggles can be overridden via CLI.
+The TOML configuration selects the output format and enables or disables plots.
+The plot toggles can be overridden via CLI. Note that if a plot type is enabled,
+it will only be generated if all required data is present and valid.
 
-| Section            | Option             | Values           | Default | Description                                                                      |
-| ------------------ | ------------------ | ---------------- | ------- | -------------------------------------------------------------------------------- |
-| `[output_options]` | `output_format`    | `"pdf"`, `"svg"` | `"pdf"` | The output file format for rendered plots                                        |
-| `[plot_toggles]`   | `read_percentages` | boolean          | `true`  | Toggles the creation of the `READ_PERCENTAGES` plot                              |
-| `[plot_toggles]`   | `clustermap`       | boolean          | `true`  | Toggles the creation of `clustermap` plots for enabled matrices for each `ctype` |
-| `[plot_toggles]`   | `heuristics`       | boolean          | `true`  | Toggles the creation of `heuristics` plots for each `ctype`                      |
-| `[plot_toggles]`   | `coverage`         | boolean          | `true`  | Toggles the creation of `coverageDiagram` plots for each `ctype`                 |
+| Section            | Option             | Values           | Default | Description                                                                                                        |
+| ------------------ | ------------------ | ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `[output_options]` | `output_format`    | `"pdf"`, `"svg"` | `"pdf"` | The output file format for rendered figures                                                                        |
+| `[plot_toggles]`   | `read_percentages` | boolean          | `true`  | Toggles the run-level `READ_PERCENTAGES` figure                                                                    |
+| `[plot_toggles]`   | `clustermap`       | boolean          | `true`  | Toggles `clustermap` figures for each available (`ctype`, matrix) combination, using [enabled matrices](#matrices) |
+| `[plot_toggles]`   | `heuristics`       | boolean          | `true`  | Toggles `heuristics` figures for each available `ctype`                                                            |
+| `[plot_toggles]`   | `coverage`         | boolean          | `true`  | Toggles `coverageDiagram` figures for each available `ctype`                                                       |
 
 ### Plot-Specific TOML Options
 
 These options are configured in `config.toml`.
 
-| Section               | Option           | Values                                                                                                                              | Default        | Description                                                             |
-| --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `[heuristics_options] | `enabled_plots`  | booleans for `allele_quality`, `quality_subplot`, `allele_frequency`, `frequency_subplot`, `coverage_depth_hist`, `confidence_hist` | All `true`     | Selects which heuristics plots to generate                              |
-| `[coverage_options]`  | `variant_color`  | `"nucleotide"`, `"frequency"`                                                                                                       | `"nucleotide"` | Colors variant coverage annotations by nucleotide identity or frequency |
-| `[percent_options]`   | `viz_option`     | `"pie"`, `"sankey"`                                                                                                                 | `"pie"`        | Chooses the read-percentages visualization style                        |
-| `[cluster_options]`   | `cluster_option` | `"clustermap"`, `"tree"`                                                                                                            | `"clustermap"` | Chooses the clustermap layout style                                     |
-| `[cluster_options]`   | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp`                                                                         | All `true`     | Selects which clustermap matrix types to generate                       |
-| `[cluster_options]`   | `tree_height`    | number from 0 to 1                                                                                                                  | `0.78`         | Default tree height, overridden by `--tree-height`                      |
+| Section                | Option           | Values                                                                                                                              | Default        | Description                                                                                                                                                                   |
+| ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[heuristics_options]` | `enabled_plots`  | Booleans for `allele_quality`, `quality_subplot`, `allele_frequency`, `frequency_subplot`, `coverage_depth_hist`, `confidence_hist` | All `true`     | Selects which heuristics subplots to generate. If heuristics plotting is enabled, at least one subplot must also be enabled.                                                  |
+| `[coverage_options]`   | `variant_color`  | `"nucleotide"`, `"frequency"`                                                                                                       | `"nucleotide"` | Colors variant coverage annotations by nucleotide idminority nucleotide entity or frequency. If `"frequency"` is selected, the corresponding bar chart will be omitted        |
+| `[percent_options]`    | `viz_option`     | `"pie"`, `"sankey"`                                                                                                                 | `"pie"`        | Chooses the read-percentages visualization style                                                                                                                              |
+| `[cluster_options]`    | `cluster_option` | `"clustermap"`, `"tree"`                                                                                                            | `"clustermap"` | Chooses between a heatmap or phylogram-plus-heatmap layout for displaying variant clustering                                                                                  |
+| `[cluster_options]`    | `matrix_types`   | booleans for `expenrd`, `jaccard`, `mutuald`, and `njointp`                                                                         | All `true`     | Selects matrix types eligible for clustermap figures (see [Matrices](#matrices))                                                                                              |
+| `[cluster_options]`    | `tree_height`    | Number from 0 to 1                                                                                                                  | `0.78`         | Positions the dendrogram cutoff line in the phylogram-plus-heatmap figure if `cluster_option = "tree"` is set; otherwise not used. Overridden by `--tree-height` CLI argument |
 
 ## Plots
 
 ### Read Percentages
 
 The read percentages figure shows a summary of all ctypes and their
-categorizations within different steps of the entire IRMA run, displayed across
-three pie charts. Note the `--paired` boolean option affects the description
-text for the pie charts.
+categorizations within different steps of the entire IRMA run. If the pie option
+is selected, this will be  displayed across three pie charts. Note the
+`--paired` boolean option affects the description text for the pie charts.
 
 ![ReadPercentages_pie](demo/READ_PERCENTAGES.svg)
 
@@ -151,17 +167,18 @@ pie charts by setting `viz_option = "sankey"` under `[percent_options]` in
 
 ![A_NP_heuristics](demo/A_NP-heuristics.svg)
 
-The heuristics figure has multiple plots that summarize the distributions that
-IRMA uses as reference points for variant calling decisions within a ctype.
-Plots 1-4 use a kernel density estimation with Silverman's Rule of Thumb for
-bandwidth selection.
+The heuristics figure features multiple subplots that summarize the
+distributions that IRMA uses when evaluating variants for one target. The
+density plots (1–4) use a kernel density estimate with [Silverman's
+rule-of-thumb
+bandwidth](https://www.sciencedirect.com/topics/mathematics/silverman).
 
 1. Average allele quality
 2. Zoomed view of the average allele quality
 3. Observed allele frequency from 0 to 10%
 4. Zoomed view of the observed allele frequency
-5. Histogram of coverage depth
-6. Histogram of confidence that an allele is not a machine error
+5. Histogram of coverage depth at or below the 20th percentile
+6. Histogram of positive confidence that an allele is not a machine error
 
 Each plot may be individually toggled within the `config.toml`.
 
@@ -169,8 +186,9 @@ Some of the heuristics plots are affected by the following CLI arguments:
 
 - `--min-variant-average-quality` places a vertical reference line for average
 allele quality (1) and serves as the x-maximum for the zoomed quality plot (2).
-- `--min-variant-frequency` places a vertical reference line for the observed allele frequency
-(3) and serves as the x-maximum for the zoomed frequency plot (4).
+- `--min-variant-frequency` places a vertical reference line for the observed
+allele frequency (3) and serves as the x-maximum for the zoomed frequency plot
+(4).
 - `--min-variant-depth` chooses where to add a vertical reference line for the
 coverage histogram (5).
 - `--min-confidence-not-sequencer-error` chooses where to add a vertical
@@ -182,34 +200,44 @@ not recalculate the underlying IRMA outputs.
 
 ### Clustermap
 
-The clustermap is a square heatmap, where each row/column represents a variant
-site, for example `43C` and `817T`. Each cell encodes the similarity between the
-two sites. The lower the value, the higher the similarity between the sites, and
-the darker the cell is colored.
+The clustermap is a square heatmap, where each row and column represents a
+variant site, for example `43C` and `817T`. Each cell encodes the distance
+between the two sites: lower values indicate higher similarity between sites,
+and are colored darker.
 
-There are up to four possible similarity matrices that IRMA can export for a
-given ctype, giving four possible heatmaps:
+#### Matrices
+
+There are up to four similarity matrices that IRMA can export for a given
+`ctype`, each of which can produce a heatmap:
 
 <!-- markdownlint-configure-file {"MD033": {"allowed_elements": ["img"]}} -->
 
-- **EXPENRD**: Equal to Jaccard, unless the total number of read patterns that cover the sites being compared is less than or equal to 20, otherwise it uses a custom distance as fallback:   <img src="demo/expenrd_equation.svg" alt="(joint*mnA)/(mx1*mx2)" height="14" />
-- **JACCARD**: [Jaccard-style distance](https://en.wikipedia.org/wiki/Jaccard_index):   <img src="demo/jaccard_equation.svg" alt="1-joint^2/(mx1*mx2)" height="14"/>
-- **MUTUALD**: A co-occurrence distance, calculated with:   <img src="demo/mutuald_equation.svg" alt="1-joint/(mx1+mx2-joint)" height="14" />
-- **NJOINTP**: A simple distance from the joint frequency, calculated with:   <img src="demo/njointp_equation.svg" alt="1-2*joint" height="14"/>
+- **EXPENRD**: Equal to JACCARD only when more than 20 weighted read patterns
+  span both sites and both MUTUALD and JACCARD are nonzero; otherwise it uses:
+  <img src="demo/expenrd_equation.svg" alt="1 - (joint × mnA) / (mx1 × mx2)"
+  height="14" />
+- **JACCARD**: A [Jaccard-style
+  distance](https://en.wikipedia.org/wiki/Jaccard_index): <img
+  src="demo/jaccard_equation.svg" alt="1 - joint / (mx1 + mx2 - joint)"
+  height="14" />
+- **MUTUALD**: A co-occurrence distance: <img src="demo/mutuald_equation.svg"
+  alt="1 - joint² / (mx1 × mx2)" height="14" />
+- **NJOINTP**: A distance from joint frequency: <img
+  src="demo/njointp_equation.svg" alt="1 - 2 × joint" height="14" />
 
 For these calculations:
 
-- `joint` represents the frequency of the two alleles being observed together on the same reads
-- `mn1`/`mn2` is the minimum of the observed frequency of allele `A` among reads spanning both sites and the overall called frequency of allele `A` at site `s1`/`s2`
-- `mx1`/`mx2` is the maximum of the observed frequency of allele `A` among reads spanning both sites and the overall called frequency of allele `A` at site `s1`/`s2`
+- `joint` is the fraction of read patterns spanning both sites that carry both
+  selected variant alleles
+- `mn1`/`mn2` is the minimum of the selected allele's frequency among reads
+  spanning both sites and its overall called frequency at site `s1`/`s2`
+- `mx1`/`mx2` is the maximum of those same two frequencies at site `s1`/`s2`
 - `mnA` is the minimum of `mn2` and `mn1`
-- The total is the number of reads spanning the two sites, weighted by pattern counts
+- - `total` is the number of reads spanning the two sites, weighted by pattern
+  counts
 
-Different matrices/clustermaps can be enabled or disabled within the `config.toml`.
-
-The `tree_height` option under `[cluster_options]` in `config.toml`, overridden
-by the `--tree-height` CLI flag, sets the tree height for agglomerative
-clustering of variant sites.
+Different matrices/clustermaps can be enabled or disabled within
+`irma-viz-config.toml`.
 
 ![A_NP_clustermap](demo/A_NP-EXPENRD.svg)
 
@@ -218,23 +246,24 @@ heatmap values, but adds more focus to the phylogenetic tree paired with the
 heatmap. This version of the dendrogram features scaled branch lengths, and the
 reference line shows the cutoff where variants are clustered together.
 
+The `tree_height` option under `[cluster_options]` in `irma-viz-config.toml`,
+overridden by the `--tree-height` CLI flag, controls the displayed dendrogram
+cutoff line in the tree layout.
+
 ![A_NP_clustermap_tree](demo/A_NP-EXPENRD_tree.svg)
 
 ### Coverage
 
-Creates a coverage line plot showing the volume of reads covering each position
-along the length of the ctype. When variants are available and
-`variant_color = "nucleotide"`, an additional bar plot is created showing their
-relative frequencies.
+The coverage figure shows coverage depth at each position along a target. When
+variants are available and `variant_color = "nucleotide"`, an additional bar
+chart shows their observed frequencies.
 
-The axis labels on the bar chart provide the original nucleotide identity of the
-allele, followed by the variant nucleotide, and the number on the bar itself
-represents the position of the allele. For example, a bar labeled `A2G` with
-`38` on the bar represents an `A` being replaced with a `G` at position 38. The
-colors of the bars and their relevant reference lines are based on the
-nucleotide identity of the variant. The `exp_err.` bar and horizontal reference
-line show the threshold frequency for where variants are called, rather than
-assumed to be errors.
+The bar-chart labels show the consensus allele followed by the minority allele,
+and the number on a bar is its position. For example, a bar labeled `A2G` with
+`38` on the bar represents consensus `A` and minority `G` at position 38. Bar
+colors and their reference lines follow the minority nucleotide. When the bar
+chart is shown and the pairing statistics contain `ExpectedErrorRate`, the `exp.
+err.` bar and horizontal line show that value; variant lines below it are black.
 
 ![A_NP-coverage](demo/A_NP-coverageDiagram.svg)
 
@@ -254,9 +283,9 @@ Prevention; or reach out to other [contributors](CONTRIBUTORS.md).
 
 ### Development Process
 
-IRMA-Viz is maintained by contributors in CDC/NCIRD/ID who develop changes through
-the project repository. Proposed changes should be made in a feature branch and
-submitted as a pull request for review before they are merged.
+irma-viz is maintained by contributors in CDC/NCIRD/ID who develop changes
+through the project repository. Proposed changes should be made in a feature
+branch and submitted as a pull request for review before they are merged.
 
 ### Public Domain Standard Notice
 

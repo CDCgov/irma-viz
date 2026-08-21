@@ -1,3 +1,5 @@
+//! Discovery and validation of targets with the inputs required for each plot.
+
 use std::{
     collections::BTreeSet,
     fs,
@@ -24,11 +26,12 @@ pub struct ClusterTargets {
 }
 
 impl ClusterTargets {
+    /// Inserts a a matrix type into the [`BTreeSet`]
     fn insert(&mut self, matrix_type: MatrixType, target: String) {
         self.targets_for_mut(matrix_type).insert(target);
     }
 
-    /// gets the set of targets for a given matrix type
+    /// Gets the set of targets for a given matrix type
     pub fn targets_for(&self, matrix_type: MatrixType) -> &BTreeSet<String> {
         match matrix_type {
             MatrixType::Expenrd => &self.expenrd,
@@ -38,7 +41,8 @@ impl ClusterTargets {
         }
     }
 
-    /// gets the set of targets for a given matrix type mutably
+    /// Gets the set of targets for a given matrix type as mutable references
+    /// for editing
     fn targets_for_mut(&mut self, matrix_type: MatrixType) -> &mut BTreeSet<String> {
         match matrix_type {
             MatrixType::Expenrd => &mut self.expenrd,
@@ -228,8 +232,7 @@ fn required_target_files(dir: &Path, target: &str, suffixes: &[&str]) -> Vec<Pat
         .collect()
 }
 
-/// Checks if the required files exist to create a coverage plot for the given
-/// target, based on a Vec of theoretical paths
+/// Checks whether all required files exist for a target-specific plot.
 fn validate_target_files(target: &str, required_files: Vec<PathBuf>, plot_type: &str) -> bool {
     let mut missing_files = Vec::new();
 

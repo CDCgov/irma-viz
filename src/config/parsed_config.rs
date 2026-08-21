@@ -1,3 +1,6 @@
+//! Combining TOML and command-line configuration options into a unified parsed
+//! configuration
+
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -15,27 +18,27 @@ use crate::{
     warn,
 };
 
-/// A parsed IO Config
+/// Resolved input paths for IRMA run data and output paths
 #[derive(Debug)]
 pub struct IOConfig {
-    /// Path to the destination directory for created plots
+    /// Path to the destination directory for rendered plots
     pub output_path: PathBuf,
     /// Format of the output files
     pub output_format: OutputFormat,
-    /// Path to tables directory for irma run
+    /// Path to `tables/` directory for irma run
     pub table_path: PathBuf,
-    /// Path to matrix_path for irma run
+    /// Path to `matrices/` directory for irma run
     pub matrix_path: PathBuf,
 }
 
-/// takes the input root for an IRMA run and returns paths for the `tables/` and `matrices/` directories
+/// Returns paths for the `tables/` and `matrices/` directories, given the input
+/// root path for an IRMA run
 pub fn get_directory_paths(input_root: &Path) -> (PathBuf, PathBuf) {
     (input_root.join("tables"), input_root.join("matrices"))
 }
 
 impl IOArgsCLI {
-    /// Parses IO args by setting `output_path` to `input_root/figures` if no
-    /// `output_path` is otherwise specified
+    /// Parses IO args from command line
     pub fn parse_io_args(self, output_format: OutputFormat) -> IOConfig {
         let IOArgsCLI {
             input_root,
@@ -63,7 +66,7 @@ pub struct PlotToggles {
     pub clustermap: bool,
 }
 
-/// helper function for overriding TOML values with CLI values, if they exist
+/// Merges a single optional CLI override over a TOML value
 fn merge_toml_cli_value<T>(toml_val: T, cli_val: Option<T>) -> T {
     let mut result = toml_val;
     if let Some(v) = cli_val {
@@ -73,8 +76,7 @@ fn merge_toml_cli_value<T>(toml_val: T, cli_val: Option<T>) -> T {
 }
 
 impl PlotToggles {
-    /// helper function for overriding TOML options with CLI options, if
-    /// applicable
+    /// Merges optional CLI overrides over TOML values
     pub fn merge_plot_toggles(toml: PlotToggles, cli: PlotToggleCLI) -> PlotToggles {
         let read_percentages = merge_toml_cli_value(toml.read_percentages, cli.read_percentages);
         let heuristics = merge_toml_cli_value(toml.heuristics, cli.heuristics);
@@ -111,16 +113,24 @@ pub struct ClusterConfig {
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum CoverageColorOption {
+    /// Color variant reference lines and their corresponding bar plot bars by
+    /// their nucleotide identity
     Nucleotide,
+    /// Color variant reference lines by their observed minority-allele
+    /// frequency
     Frequency,
 }
 
-/// For selecting between a sankey flow diagram and a dashboard of pie charts
+/// Selects between a sankey flow diagram and a dashboard of pie charts
 /// describing the classifications of the reads in the IRMA run
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PercentVizOption {
+    /// Sankey flow diagram showing the classifications and mapping of reads
+    /// throughout the IRMA pipeline
     Sankey,
-    // holds a bool for true/false based on whether the input is paired
+    // Pie-chart dashboard showing classifications and mapping of reads
+    // throughout the IRMA pipeline. Holds a bool for true/false based on
+    // whether the input is paired
     Pie(bool),
 }
 
@@ -129,11 +139,13 @@ pub enum PercentVizOption {
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ClusterOption {
+    /// Render only the labeled clustermap
     Clustermap,
+    /// Render a phylogram beside the labeled clustermap
     Tree,
 }
 
-/// Parsed read-percent plot options
+/// Parsed read-percentages plot options
 #[derive(Debug, Clone, Copy)]
 pub struct ReadPercentConfig {
     pub viz_option: PercentVizOption,
@@ -269,7 +281,7 @@ fn validate_finite_range(name: &str, value: f64, min: f64, max: f64) -> Result<(
 
 impl PlotSpecificConfig {
     /// Merges the plot-specific arguments from the TOML and CLI and validates
-    /// them.
+    /// their values.
     fn merge_plot_specifics(
         toml: PlotSpecificTOML,
         cli: PlotSpecificCLI,

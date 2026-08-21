@@ -1,4 +1,4 @@
-# The IRMA-Viz Contributors
+# The irma-viz Contributors
 
 Notable contributions by:
 
@@ -7,6 +7,6 @@ Notable contributions by:
 - [Samuel S. Shepard] (CDC/NCIRD/ID)
 
 <!-- Emails -->
-[Nathaniel W. H. Moore]: mailto:Nathaniel%20Moore<bg85@cdc.gov>
-[Samuel C. Wiley]: mailto:Samuel%20Wiley<dzw2@cdc.gov>
+[Nathaniel W. H. Moore]: mailto:bg85@cdc.gov
+[Samuel C. Wiley]: mailto:dzw2@cdc.gov
 [Samuel S. Shepard]: mailto:sshepard@cdc.gov

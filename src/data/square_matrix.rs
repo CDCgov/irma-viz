@@ -1,3 +1,5 @@
+//! Parsing for IRMA square-matrix (`.sqm`) files.
+
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -6,10 +8,12 @@ use std::{
 
 use crate::diagnostics::PlotError;
 
-/// Parsed square-matrix input used to render clustermap and tree plots.
+/// A labeled square numeric matrix parsed from an IRMA `.sqm` file.
 #[derive(Debug, Clone)]
 pub struct SquareMatrix {
+    /// Row and column labels in matrix order.
     pub labels: Vec<String>,
+    /// Numeric rows corresponding to [`Self::labels`].
     pub matrix: Vec<Vec<f64>>,
 }
 

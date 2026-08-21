@@ -1,28 +1,27 @@
-# IRMA-Viz Changelog
+# irma-viz Changelog
 
 All notable changes to this project will be documented in this file. The format
-is roughly based on [Keep a Changelog], and this project tries to adheres to
+is roughly based on [Keep a Changelog], and this project tries to adhere to
 [Semantic Versioning].
 
 ## [0.2.0-dev] - TBD
 
 ### Changed
 
-- Changed default output format to `.pdf`, this can be changed in `config.toml`
-- Histogam plots in `{ctype}-heuristics` now uses R-style pretty breaks as
-  its binning strategy.
+- Changed the default output format to `.pdf`; it can be changed in
+  `config.toml`
+- Histogram plots in `{ctype}-heuristics` now use R-style pretty breaks for
+  binning.
 - Moved heuristics thresholds from `config.toml`: `min_f`, `min_tcc`, `min_aq`,
   `min_conf` are now CLI arguments only with range validation
-- Made `variant_color`, `viz_option`, and `cluster_option` TOML arguments only
-- Made `--paired` option for read-percentages CLI-only. It is required with no
-  default
-- Moved `tree height` to `[cluster_options]` in `config.toml`
+- Made `variant_color`, `viz_option`, and `cluster_option` TOML options only
+- Made `--paired` CLI-only, with no default; it is required only when
+  `READ_PERCENTAGES` is enabled with `viz_option = "pie"`
+- Moved `tree_height` to `[cluster_options]` in `config.toml`
 - Enabled all clustermap matrix types by default in `config.toml`: `expenrd`,
   `jaccard`, `mutuald`, and `njointp`
-- Made `--paired` CLI argument only required if `READ_PERCENTAGES` is toggled on
-  and `viz_option = "pie"` is set
 - Clarified CLI argument names for heuristics thresholds
-  - `--min-aq` > `min-variant-average-quality`
+  - `--min-aq` > `--min-variant-average-quality`
   - `--min-f` > `--min-variant-frequency`
   - `--min-tcc` > `--min-variant-depth`
   - `--min-conf` > `--min-confidence-not-sequencer-error`
@@ -33,8 +32,8 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
 
 ### Added
 
-- Added pdf rendering capability
-- Added ability to toggle all heuristics plots
+- Added PDF rendering capability
+- Added the ability to toggle individual heuristics subplots
 
 ## [0.1.1] - 2026-07-16
 
@@ -44,7 +43,7 @@ is roughly based on [Keep a Changelog], and this project tries to adheres to
 
 ## [0.1.0] - 2026-07-14
 
-- Initial release. IRMA-Viz can reproduce the original IRMA plots.
+- Initial release. irma-viz can reproduce the original IRMA plots.
 
 <!-- Versions -->
 [0.2.0-dev]: https://github.com/CDCgov/irma-viz/compare/v0.1.1...v0.2.0

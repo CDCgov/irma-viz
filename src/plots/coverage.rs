@@ -1,3 +1,5 @@
+//! Coverage-depth figures with minority-variant annotations.
+
 use crate::{
     config::{CoverageColorOption, ParsedConfig},
     data::{AllVariants, Coverage, PairingStats},
@@ -6,7 +8,10 @@ use crate::{
 };
 use kuva::{prelude::*, render::annotations::TextAnnotation};
 
-/// For coloring allele reference lines based on the variant nucleotide
+/// Returns the corresponding color for a minority allele, based on nucleotide
+/// identity, used in bars and reference lines.
+///
+/// Unsupported or unrecognized nucleotides are rendered white.
 fn get_allele_color(allele: char) -> String {
     let color = match allele {
         'A' => "#1F77B4",
@@ -18,7 +23,9 @@ fn get_allele_color(allele: char) -> String {
     color.to_owned()
 }
 
-/// For coloring allele reference lines based on frequency
+/// Maps a minority-allele frequency to a clamped Viridis color.
+///
+/// A degenerate frequency range maps to the palette midpoint
 fn map_allele_color(frequency: f64, freq_range: (f64, f64)) -> String {
     let colormap = ColorMap::Viridis;
     let (min, max) = freq_range;
@@ -32,6 +39,7 @@ fn map_allele_color(frequency: f64, freq_range: (f64, f64)) -> String {
     colormap.map(normalized_freq)
 }
 
+/// Builds a filled coverage-depth line plot from [`Coverage`] observations.
 pub fn kuva_coverage(coverage: Coverage) -> Vec<Plot> {
     vec![
         LinePlot::new()
@@ -183,6 +191,8 @@ pub fn plot_coverage(
 /// Creates a bar of the minor variants, using labels such as A2C, for a
 /// concensus A with a variant C. The bars are colored based on the nucleotide
 /// of the variant, with heights based on the observed frequency of that variant.
+///
+/// /// When present, `expected` adds a horizontal expected-error reference line.
 pub fn coverage_bar(bar: BarPlot, expected: Option<f64>) -> (Vec<Plot>, Layout) {
     let bar = vec![bar.into()];
 

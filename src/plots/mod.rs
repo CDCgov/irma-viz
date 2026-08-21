@@ -1,3 +1,5 @@
+//! Figure construction and rendering for IRMA output data.
+
 use kuva::{
     prelude::{Layout, Plot, SvgBackend},
     render::render::Scene,
@@ -15,13 +17,13 @@ pub mod coverage;
 pub mod heuristics;
 pub mod read_percentages;
 
-/// Renders a single kuva plot to a file
+/// Renders a single kuva plot to `{outpath}/{filename}{output_format}`
 ///
 /// ## Errors
 ///
-/// Can return either a [`PlotError::RenderError`] if there is an issue with kuva
-/// converting from svg to pdf, or a [`PlotError::IOError`] if there is an issue
-/// writing to file.
+/// Can return either a [`PlotError::RenderError`] if there is an issue with
+/// kuva converting from svg to pdf, or a [`PlotError::IOError`] if there is an
+/// issue writing to file.
 pub fn render_plot(
     plot: (&str, (Vec<Plot>, Layout)),
     outpath: impl AsRef<Path>,
@@ -60,6 +62,14 @@ pub fn render_plot(
     Ok(())
 }
 
+/// Renders a figure with multiple subplots from a [`Scene`] to
+/// `{outpath}/{filename}{output_format}`.
+///
+/// ## Errors
+///
+/// Can return either a [`PlotError::RenderError`] if there is an issue with
+/// kuva converting from svg to pdf, or a [`PlotError::IOError`] if there is an
+/// issue writing to file.
 pub fn render_multiplot(
     scene: &Scene,
     outpath: impl AsRef<Path>,

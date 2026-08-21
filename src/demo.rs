@@ -1,3 +1,5 @@
+//! Demo figure generation, available only with the `demo` feature.
+
 use crate::{
     config::{
         CoverageColorOption, MatrixType, OutputFormat, ParsedConfig, PercentVizOption,
@@ -26,6 +28,10 @@ const COMBINED_CELL_WIDTH: f64 = 480.0;
 const COMBINED_ROW_HEIGHTS: [f64; 2] = [420.0, 420.0];
 const SVG_XMLNS: &str = "http://www.w3.org/2000/svg";
 
+/// Generates the SVG demo set and `combined.svg` for one target.
+///
+/// Creates read-percentages (pie and sankey) coverage (nucleotide and
+/// frequency), clustermap (tree and heatmap) variants.
 pub fn run_demo(cfg: &mut ParsedConfig, target: &str) -> Result<(), PlotError> {
     if !is_valid_target_name(target) {
         return Err(PlotError::ConfigError(format!(
@@ -116,7 +122,7 @@ fn rename_demo_output(output_path: &Path, from: &str, to: &str) -> Result<(), Pl
         .map_err(|err| PlotError::IOError(format!("renaming '{from}' to '{to}'"), err))
 }
 
-/// Data and metadata for a single plot
+/// SVG body and dimensions for one panel in the combined demo figure.
 #[derive(Debug)]
 struct SvgPanel {
     pub width: f64,
@@ -126,7 +132,7 @@ struct SvgPanel {
     pub body: String,
 }
 
-/// loads all of the rendered svgs and stitches them together
+/// Loads rendered SVG panels and stitches them into `combined.svg`.
 fn render_combined_demo_svg(
     output_path: &Path,
     target: &str,
@@ -236,7 +242,7 @@ fn load_svg_panel(path: PathBuf, id_prefix: &str) -> Result<SvgPanel, PlotError>
     })
 }
 
-// gets metadata from a given svg
+/// Parses a numeric SVG dimension with an optional unit suffix.
 fn parse_svg_dimension(svg_tag: &str, attribute: &str) -> Result<f64, PlotError> {
     let marker = format!("{attribute}=\"");
     let start = svg_tag
@@ -255,7 +261,8 @@ fn parse_svg_dimension(svg_tag: &str, attribute: &str) -> Result<f64, PlotError>
         .map_err(|_| PlotError::InvalidData(format!("invalid {attribute:?} value {raw:?}")))
 }
 
-// get metadata (font) from an svg
+/// Extracts root attributes (specifically font) inherited by an embedded SVG
+/// panel.
 fn extract_root_attrs(root_tag: &str) -> String {
     let mut attrs = String::new();
 
@@ -272,6 +279,7 @@ fn extract_root_attrs(root_tag: &str) -> String {
     attrs
 }
 
+/// Extracts a quoted attribute value from an SVG tag.
 fn extract_svg_attr(svg_tag: &str, attribute: &str) -> Option<String> {
     let marker = format!("{attribute}=\"");
     let start = svg_tag.find(&marker)? + marker.len();

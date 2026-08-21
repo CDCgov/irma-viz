@@ -1,6 +1,8 @@
+//! IRMA matrix types available for clustermap figures.
+
 use serde::Deserialize;
 
-/// Possible matrix types for cluster plot input/output
+/// Toggles for individual IRMA matrix types for clustermaps.
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct MatrixTypes {
     pub expenrd: bool,
@@ -9,6 +11,7 @@ pub struct MatrixTypes {
     pub njointp: bool,
 }
 
+/// IRMA matrix types
 #[derive(Debug, Clone, Copy)]
 pub enum MatrixType {
     Expenrd,
@@ -39,7 +42,7 @@ impl MatrixTypes {
 }
 
 impl MatrixType {
-    /// for generating output filenames for the cluster plots
+    /// Returns the uppercase Matrix name for filenames and output messages
     pub fn display_name(self) -> &'static str {
         match self {
             MatrixType::Expenrd => "EXPENRD",
@@ -49,7 +52,7 @@ impl MatrixType {
         }
     }
 
-    /// for generating filenames for reading in cluster matrix data
+    /// Returns the IRMA filename suffix for the given matrix
     pub fn file_suffix(self) -> &'static str {
         match self {
             MatrixType::Expenrd => "-EXPENRD.sqm",

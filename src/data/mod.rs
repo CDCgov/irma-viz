@@ -1,3 +1,5 @@
+//! Parsers and in-memory representations for IRMA output tables and matrices.
+
 use serde::{Deserialize, de::Error};
 
 pub mod all_alleles;
@@ -14,7 +16,9 @@ pub use read_counts::*;
 pub use square_matrix::*;
 pub use variants::*;
 
-/// TODO: Docs
+/// Deserializes an IRMA numeric field, treating the literal `NA` as missing.
+///
+/// Every other value must parse as an [`f64`].
 fn option_float<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -27,7 +31,10 @@ where
     }
 }
 
-/// TODO: Docs
+/// Deserializes an IRMA allele code as an uppercase canonical nucleotide.
+///
+/// `A`, `C`, `G`, and `T` retain their identity; `N`, `-`, and `.` normalize
+/// to `N`. Invalid or multi-character values are rejected.
 fn allele_char<'de, D>(deserializer: D) -> Result<char, D::Error>
 where
     D: serde::Deserializer<'de>,

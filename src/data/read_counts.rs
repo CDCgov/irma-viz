@@ -1,8 +1,10 @@
+//! Parsing for run-level IRMA `READ_COUNTS.txt` tables.
+
 use crate::data::option_float;
 use std::{collections::HashMap, path::Path};
 
+/// A deserialized row from the run-level `READ_COUNTS.txt` table.
 #[derive(Debug, serde::Deserialize)]
-/// TODO: Docs
 struct ReadCountsLine {
     #[serde(rename = "Record")]
     pub record: String,
@@ -14,12 +16,13 @@ struct ReadCountsLine {
     pub p_a_w: Option<f64>,
 }
 
+/// Read-count metrics from `READ_COUNTS.txt`, indexed by IRMA record name.
 #[derive(Debug)]
-/// TODO: Docs
 pub struct ReadCounts {
     pub map: HashMap<String, Data>,
 }
 
+/// Counts associated with one `READ_COUNTS.txt` record.
 #[derive(Debug)]
 pub struct Data {
     pub read: f64,
@@ -29,7 +32,15 @@ pub struct Data {
 
 impl ReadCounts {
     #[allow(unused)]
-    /// TODO: Docs
+    /// Reads a headered `READ_COUNTS.txt` TSV and indexes rows by `Record`.
+    ///
+    /// `NA` values in `Patterns` and `PairsAndWidows` are represented as
+    /// [`None`].
+    ///
+    /// ## Errors
+    ///
+    /// Will return an IO error if the CSV reader cannot be built, or a line
+    /// cannot be deserialized
     pub fn import_from_file(filename: &Path) -> std::io::Result<Self> {
         let mut map = HashMap::new();
 
@@ -52,6 +63,7 @@ impl ReadCounts {
         Ok(ReadCounts { map })
     }
 
+    /// Returns the read count for `key`, or `0.0` when it is absent.
     pub fn read(&self, key: &str) -> f64 {
         match self.map.get(key) {
             Some(data) => data.read,
@@ -59,6 +71,8 @@ impl ReadCounts {
         }
     }
 
+    /// Returns the pattern count for `key`, mapping absent or `NA` values to
+    /// `0.0`.
     pub fn pattern(&self, key: &str) -> f64 {
         match self.map.get(key) {
             Some(data) => data.pattern.unwrap_or(0.0),
@@ -66,6 +80,8 @@ impl ReadCounts {
         }
     }
 
+    /// Returns the PairsAndWidows count for `key`, mapping absent or `NA`
+    /// values to `0.0`.
     pub fn pairs_and_widows(&self, key: &str) -> f64 {
         match self.map.get(key) {
             Some(data) => data.pairs_and_windows.unwrap_or(0.0),
@@ -74,6 +90,8 @@ impl ReadCounts {
     }
 }
 
+/// Directed `(source, target, read_count)` links for a Sankey figure, based on
+/// the format they are expected by Kuva
 pub struct SankeyVec {
     pub edges: Vec<(String, String, f64)>,
 }
@@ -81,6 +99,9 @@ pub struct SankeyVec {
 impl SankeyVec {
     /// Reads in a READ_COUNTS file and converts it into a parsed [`SankeyVec`]
     /// format
+    ///
+    /// Stages `0` and `1` are ignored. Unrecognized records outside stages
+    /// `4` and `5` cause an error.
     ///
     /// ## Errors
     ///

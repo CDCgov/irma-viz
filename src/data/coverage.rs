@@ -1,7 +1,11 @@
+//! Parsing for target-specific IRMA `*-coverage.txt` tables.
+
 use crate::{data::*, diagnostics::PlotError};
 use std::path::Path;
 
-/// TODO: Docs
+/// A deserialized row from an IRMA `*-coverage.txt` table.
+///
+/// `Position` and `Coverage Depth` accept the literal `NA`.
 #[derive(Debug, serde::Deserialize)]
 struct CoverageLine {
     #[serde(rename = "Position", deserialize_with = "option_float")]
@@ -10,7 +14,10 @@ struct CoverageLine {
     pub coverage: Option<f64>,
 }
 
-/// TODO: Docs
+/// Coverage-depth observations for one IRMA target.
+///
+/// `position` and `coverage` are parallel vectors containing only rows where
+/// both source columns have numeric values.
 #[derive(Debug, Clone)]
 pub struct Coverage {
     pub position: Vec<f64>,
@@ -19,6 +26,8 @@ pub struct Coverage {
 
 impl Coverage {
     /// Reads a coverage TSV file and parses it for a coverage plot.
+    ///
+    /// Rows with `NA` in either source column are skipped.
     ///
     /// ## Errors
     ///

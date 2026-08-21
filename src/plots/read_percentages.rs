@@ -1,3 +1,5 @@
+//! Run-level read-percentage figures derived from `READ_COUNTS.txt`.
+
 use crate::{
     config::ParsedConfig,
     data::{ReadCounts, SankeyVec},
@@ -26,6 +28,7 @@ pub fn plot_perc_sankey(sankey_vec: SankeyVec, cfg: &ParsedConfig) -> Result<(),
     )
 }
 
+/// Builds the Sankey plot and its automatic layout.
 fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     let sankey = SankeyPlot::new()
         .with_links(sankey_vec.edges)
@@ -36,6 +39,15 @@ fn kuva_sankey(sankey_vec: SankeyVec) -> (Vec<Plot>, Layout) {
     (plots, layout)
 }
 
+/// Renders the pie-chart read-percentage dashboard from [`ReadCounts`].
+///
+/// The resolved configuration must use [`Pie`].
+///
+/// ### Errors
+///
+/// This can pass up an error from the underlying [`render_plot`] function call.
+///
+/// [`Pie`]:crate::config::PercentVizOption::Pie
 pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(), PlotError> {
     let paired = match cfg.plot_specific.read_percent.viz_option {
         crate::config::PercentVizOption::Pie(paired) => paired,
@@ -220,6 +232,7 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(),
     )
 }
 
+/// Builds a pie plot and matching legend entries from category values.
 fn kuva_pie(
     mut vals: Vec<f64>,
     legend_labels: &[&str],
@@ -243,6 +256,7 @@ fn kuva_pie(
     (legend_entries, pie)
 }
 
+/// Formats pie labels as percentage-of-total values with compact read counts.
 fn make_slice_labels(vals: &[f64]) -> Vec<String> {
     let mut slice_labels = Vec::with_capacity(vals.len());
     let total = vals.iter().copied().sum::<f64>();
@@ -258,7 +272,7 @@ fn make_slice_labels(vals: &[f64]) -> Vec<String> {
     }
     slice_labels
 }
-
+/// READMEs included in pie dashboard; copied from original IRMA R-script
 const SINGLE_README: &str = "# READ PROPORTIONS.\n\
 \n\
 ## 1. Percentages of total read counts\n\

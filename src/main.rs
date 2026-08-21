@@ -23,7 +23,7 @@ mod demo;
 mod diagnostics;
 mod plots;
 
-/// Run the program
+/// Parses configuration and renders the requested figures.
 fn main() {
     let cli = CLIConfig::parse();
     let config_path = cli.config.clone();
@@ -124,7 +124,7 @@ fn main() {
     }
 }
 
-/// Checks if the output directory exists, otherwise creates it.
+/// Ensures the output directory exists, otherwise creates it.
 fn ensure_output_dir(cfg: &ParsedConfig) -> Result<(), std::io::Error> {
     let output_dir = cfg.io_args.output_path.as_path();
     if !output_dir.as_os_str().is_empty() {

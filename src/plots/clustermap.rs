@@ -1,3 +1,5 @@
+//! Clustermap and tree-plus-heatmap figures for IRMA square matrices.
+
 use crate::{
     ParsedConfig,
     data::SquareMatrix,
@@ -7,8 +9,7 @@ use crate::{
 use kuva::prelude::*;
 use std::sync::Arc;
 
-/// Builds the Kuva clustermap plot for a square matrix using the shared
-/// red-to-light-grey color scale.
+/// Builds the Kuva clustermap plot for an IRMA square matrix
 pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
     let colormap = ColorMap::Custom(Arc::new(|t: f64| {
         let t = t.clamp(0.0, 1.0);
@@ -110,7 +111,7 @@ pub fn plot_heat_phylo(
     )
 }
 
-/// Builds the dendrogram plot and returns the corresponding leaf order used to
+/// Builds a phylogram plot and returns the corresponding leaf order used to
 /// align the heatmap rows and columns.
 fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
     let labels = data.labels.iter().map(|l| l.as_str()).collect::<Vec<_>>();

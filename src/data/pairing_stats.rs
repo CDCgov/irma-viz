@@ -1,20 +1,25 @@
+//! Parsing for target-specific IRMA `*-pairingStats.txt` tables.
+
 use std::{collections::HashMap, path::Path};
 
+/// A row from a headerless IRMA `*-pairingStats.txt` table.
 #[derive(serde::Deserialize)]
-/// TODO: Docs
 struct PairingStatsLine {
     _reference: String,
     key: String,
     value: f64,
 }
 
-/// TODO: Docs
+/// Pairing statistics from `*-pairingStats.txt`, indexed by statistic name.
 pub struct PairingStats {
+    /// Values keyed by their IRMA statistic names.
     pub data: HashMap<String, f64>,
 }
 
 impl PairingStats {
-    /// Reads a pairingStats TSV file and parses it for a coverage plot.
+    /// Reads a pairingStats TSV file and parses it, indexing each value by key.
+    ///
+    /// The table's reference column is ignored.
     ///
     /// ## Errors
     ///
