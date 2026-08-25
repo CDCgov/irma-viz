@@ -7,12 +7,20 @@ use crate::{
     plots::render_multiplot,
     warn_plot_error,
 };
-use kuva::{plot::Histogram, prelude::*};
+use kuva::{
+    plot::Histogram,
+    prelude::*,
+    render::{color::Color, render::Primitive},
+};
 
 // target number of bins for histogram. Value from original IRMA R-script
 const NUM_BINS: usize = 50;
 // Number of sample points used to render each kernel-density curve.
 const SAMPLES: usize = 1000;
+// Fill color (very light grey) for the coverage/confidence histogram bars;
+// outlined in black via post-processing since kuva's Histogram has no
+// stroke option.
+const HIST_FILL_RGB: (u8, u8, u8) = (240, 240, 240);
 
 /// Creates a heuristics multiplot for a target. Each of the six subplots can be
 /// independently toggled off in the TOML; each also can individually fail if
@@ -189,7 +197,8 @@ pub fn plot_heuristics(
                             ReferenceLine::vertical(min_conf).with_dasharray("none"),
                         )
                         .with_show_grid(false)
-                        .with_title("Histogram of confidence of not machine error, non-zero");
+                        .with_title("Histogram of confidence of not machine error, non-zero")
+                        .with_title_wrap(28);
 
                     plots.push(confidence_histogram);
                     layouts.push(confidence_hist_layout);
@@ -219,10 +228,11 @@ pub fn plot_heuristics(
     };
 
     // Multi-Plot
-    let scene = Figure::new(rows, cols)
+    let mut scene = Figure::new(rows, cols)
         .with_plots(plots)
         .with_layouts(layouts)
         .render();
+    outline_histogram_bars(&mut scene);
 
     let filename = format!("{target}-heuristics");
     render_multiplot(
@@ -270,11 +280,32 @@ fn kuva_histogram(data: Vec<f64>, num_bins: usize) -> Result<Vec<Plot>, PlotErro
     let breaks = pretty_breaks(&data, num_bins)?;
     let counts = histogram_counts(&data, &breaks);
 
+    let (r, g, b) = HIST_FILL_RGB;
     Ok(vec![
         Histogram::from_bins(breaks, counts)
-            .with_color("#272727c2")
+            .with_color(format!("#{r:02x}{g:02x}{b:02x}"))
             .into(),
     ])
+}
+
+/// Outlines histogram bars in black; kuva's `Histogram` builder has no
+/// stroke option, so bars are matched by their known fill color and patched
+/// directly in the rendered scene.
+fn outline_histogram_bars(scene: &mut kuva::render::render::Scene) {
+    for element in &mut scene.elements {
+        let (r, g, b) = HIST_FILL_RGB;
+        if let Primitive::Rect {
+            fill,
+            stroke,
+            stroke_width,
+            ..
+        } = element
+            && matches!(fill, Color::Rgb(fr, fg, fb) if (*fr, *fg, *fb) == (r, g, b))
+        {
+            *stroke = Some(Color::from("black"));
+            *stroke_width = Some(1.0);
+        }
+    }
 }
 
 /// R-style pretty histogram breaks for a suggested number of bins.
