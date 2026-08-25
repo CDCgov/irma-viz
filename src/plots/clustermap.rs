@@ -1,42 +1,22 @@
 //! Clustermap and tree-plus-heatmap figures for IRMA square matrices.
 
 use crate::{
-    ParsedConfig,
-    data::SquareMatrix,
-    diagnostics::PlotError,
-    plots::{render_multiplot, render_plot},
+    ParsedConfig, data::SquareMatrix, diagnostics::PlotError, plots::{colorbar_plot, render_multiplot, render_plot},
 };
 use kuva::prelude::*;
 use std::sync::Arc;
 
+const COLORBAR_LABEL: &str = "Phase Distance";
+
 /// Builds the Kuva clustermap plot for an IRMA square matrix
-pub fn kuva_clustermap(data: SquareMatrix) -> Vec<Plot> {
-    let colormap = ColorMap::Custom(Arc::new(|t: f64| {
-        let t = t.clamp(0.0, 1.0);
-
-        // light grey: #f3f3f3
-        let r1 = 0xf3 as f64;
-        let g1 = 0xf3 as f64;
-        let b1 = 0xf3 as f64;
-
-        // bright red: #ff0000
-        let r0 = 0xff as f64;
-        let g0 = 0x00 as f64;
-        let b0 = 0x00 as f64;
-
-        let r = r0 + t * (r1 - r0);
-        let g = g0 + t * (g1 - g0);
-        let b = b0 + t * (b1 - b0);
-
-        format!("rgb({},{},{})", r as u8, g as u8, b as u8)
-    }));
-
+pub fn kuva_clustermap(data: SquareMatrix, colormap: ColorMap, legend_label: &str) -> Vec<Plot> {
     vec![
         Clustermap::new()
             .with_data(data.matrix)
-            .with_color_map(colormap)
             .with_row_labels(data.labels.clone())
             .with_col_labels(data.labels)
+            .with_color_map(colormap)
+            .with_legend(legend_label)
             .into(),
     ]
 }
@@ -52,9 +32,10 @@ pub fn plot_clustermap(
     target: &str,
     matrix_type: &str,
 ) -> Result<(), PlotError> {
-    let plot = kuva_clustermap(data);
-    let layout = Layout::auto_from_plots(&plot)
+    let plot = kuva_clustermap(data, dist_colormap(), COLORBAR_LABEL);
+    let mut layout = Layout::auto_from_plots(&plot)
         .with_title(format!("Variant site clusters, {target}-{matrix_type}.sqm"));
+    layout.show_colorbar = true;
 
     let filename = format!("{target}-{matrix_type}");
     render_plot(
@@ -85,8 +66,8 @@ pub fn plot_heat_phylo(
         .with_reference_line(ReferenceLine::vertical(line_placement))
         .with_scale(1.7);
 
-    let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order);
-    let heat_layout = Layout::auto_from_plots(&heatmap)
+    let (heatmap, layout_cats) = kuva_heatmap(&data, leaf_order, dist_colormap(), COLORBAR_LABEL);
+    let mut heat_layout = Layout::auto_from_plots(&heatmap)
         .with_title(format!("{target}-{matrix_type}.sqm"))
         .with_title_size(25)
         .with_x_categories(layout_cats.clone().into_iter().rev().collect::<Vec<_>>())
@@ -94,6 +75,7 @@ pub fn plot_heat_phylo(
         .with_axis_line_width(0.0)
         .with_tick_size(20)
         .with_tick_width(0.0);
+    heat_layout.show_colorbar = true;
 
     let filename = format!("{target}-{matrix_type}");
     let scene = Figure::new(2, 3)
@@ -129,10 +111,38 @@ fn kuva_dendro(data: &SquareMatrix) -> (Vec<Plot>, Vec<String>) {
 
 /// Builds the heatmap plot using the dendrogram-derived leaf order and returns
 /// the row labels used for the final layout.
-fn kuva_heatmap(data: &SquareMatrix, leaf_order: Vec<String>) -> (Vec<Plot>, Vec<String>) {
+fn kuva_heatmap(
+    data: &SquareMatrix,
+    leaf_order: Vec<String>,
+    colormap: ColorMap,
+    legend_label: &str,
+) -> (Vec<Plot>, Vec<String>) {
     let dist = &data.matrix;
 
-    let colormap = ColorMap::Custom(Arc::new(|t: f64| {
+    let heatmap = Heatmap::new()
+        .with_data(dist.clone())
+        .with_labels(data.labels.clone(), data.labels.clone())
+        .with_x_categories(leaf_order.clone())
+        .with_y_categories(leaf_order)
+        .with_color_map(colormap.clone())
+        .with_legend(legend_label);
+
+    let layout_cats = heatmap
+        .row_labels
+        .clone()
+        .expect("Function is not called if Square Matrix is empty.");
+
+    (
+        vec![
+            colorbar_plot((0.0, 1.0), colormap, legend_label),
+            heatmap.into(),
+        ],
+        layout_cats,
+    )
+}
+
+fn dist_colormap() -> ColorMap {
+    ColorMap::Custom(Arc::new(|t: f64| {
         let t = t.clamp(0.0, 1.0);
 
         // light grey: #f3f3f3
@@ -150,19 +160,5 @@ fn kuva_heatmap(data: &SquareMatrix, leaf_order: Vec<String>) -> (Vec<Plot>, Vec
         let b = b0 + t * (b1 - b0);
 
         format!("rgb({},{},{})", r as u8, g as u8, b as u8)
-    }));
-
-    let heatmap = Heatmap::new()
-        .with_data(dist.clone())
-        .with_color_map(colormap)
-        .with_labels(data.labels.clone(), data.labels.clone())
-        .with_x_categories(leaf_order.clone())
-        .with_y_categories(leaf_order);
-
-    let layout_cats = heatmap
-        .row_labels
-        .clone()
-        .expect("Function is not called if Square Matrix is empty.");
-
-    (vec![heatmap.into()], layout_cats)
+    }))
 }

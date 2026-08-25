@@ -4,7 +4,7 @@ use crate::{
     config::{CoverageColorOption, ParsedConfig},
     data::{AllVariants, Coverage, PairingStats},
     diagnostics::PlotError,
-    plots::{render_multiplot, render_plot},
+    plots::{colorbar_plot, render_multiplot, render_plot},
 };
 use kuva::{prelude::*, render::annotations::TextAnnotation};
 
@@ -77,7 +77,11 @@ pub fn plot_coverage(
     if cfg.plot_specific.coverage.color_option == CoverageColorOption::Frequency
         && !variants.minority_frequencies.data.is_empty()
     {
-        coverage_plot.push(frequency_colorbar(freq_range));
+        coverage_plot.push(colorbar_plot(
+            freq_range,
+            FREQ_COLORMAP,
+            "Variant Frequency",
+        ));
     }
 
     let mut coverage_layout = Layout::auto_from_plots(&coverage_plot)
@@ -223,14 +227,4 @@ pub fn coverage_bar(bar: BarPlot, expected: Option<f64>) -> (Vec<Plot>, Layout) 
     } else {
         (bar, bar_layout)
     }
-}
-
-fn frequency_colorbar(freq_range: (f64, f64)) -> Plot {
-    let (min_freq, max_freq) = freq_range;
-
-    QuiverPlot::new()
-        .with_color_map(FREQ_COLORMAP)
-        .with_color_range(min_freq, max_freq)
-        .with_color_legend_label("Minority frequency")
-        .into()
 }

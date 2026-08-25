@@ -1,6 +1,7 @@
 //! Figure construction and rendering for IRMA output data.
 
 use kuva::{
+    plot::{ColorMap, QuiverPlot},
     prelude::{Layout, Plot, SvgBackend},
     render::render::Scene,
     render_to_svg,
@@ -104,4 +105,16 @@ pub fn render_multiplot(
     }
 
     Ok(())
+}
+
+/// Builds an empty quiver plot used only to force Kuva to render a labeled
+/// colorbar for plot types that don't support one.
+fn colorbar_plot(range: (f64, f64), colormap: ColorMap, label: &str) -> Plot {
+    let (min, max) = range;
+
+    QuiverPlot::new()
+        .with_color_map(colormap)
+        .with_color_range(min, max)
+        .with_color_legend_label(label)
+        .into()
 }
