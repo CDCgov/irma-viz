@@ -34,6 +34,8 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 
 - Added PDF rendering capability
 - Added the ability to toggle individual heuristics subplots
+- Coverage diagrams rendered with the "frequency" color mode now include a
+  colorbar
 
 ## [0.1.1] - 2026-07-16
 

@@ -8,6 +8,8 @@ use crate::{
 };
 use kuva::{prelude::*, render::annotations::TextAnnotation};
 
+const FREQ_COLORMAP: ColorMap = ColorMap::Viridis;
+
 /// Returns the corresponding color for a minority allele, based on nucleotide
 /// identity, used in bars and reference lines.
 ///
@@ -27,7 +29,6 @@ fn get_allele_color(allele: char) -> String {
 ///
 /// A degenerate frequency range maps to the palette midpoint
 fn map_allele_color(frequency: f64, freq_range: (f64, f64)) -> String {
-    let colormap = ColorMap::Viridis;
     let (min, max) = freq_range;
 
     let normalized_freq = if min == max {
@@ -36,7 +37,7 @@ fn map_allele_color(frequency: f64, freq_range: (f64, f64)) -> String {
         ((frequency - min) / (max - min)).clamp(0.0, 1.0)
     };
 
-    colormap.map(normalized_freq)
+    FREQ_COLORMAP.map(normalized_freq)
 }
 
 /// Builds a filled coverage-depth line plot from [`Coverage`] observations.
@@ -67,24 +68,31 @@ pub fn plot_coverage(
 ) -> Result<(), PlotError> {
     const OFFSET: f64 = 20.5;
 
-    let coverage_plot = kuva_coverage(coverage.clone());
     let expected_error = pairing_stats.data.get("ExpectedErrorRate").copied();
-    let show_bar = cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
-        && !variants.minority_frequencies.data.is_empty();
     let freq_range = (
         variants.minority_frequencies.min,
         variants.minority_frequencies.max,
     );
+    let mut coverage_plot = kuva_coverage(coverage.clone());
+    if cfg.plot_specific.coverage.color_option == CoverageColorOption::Frequency
+        && !variants.minority_frequencies.data.is_empty()
+    {
+        coverage_plot.push(frequency_colorbar(freq_range));
+    }
 
     let mut coverage_layout = Layout::auto_from_plots(&coverage_plot)
         .with_clamp_axis()
         .with_y_label("Coverage depth")
         .with_x_label(format!("{target} position"))
         .with_show_grid(false);
+    if cfg.plot_specific.coverage.color_option == CoverageColorOption::Frequency {
+        coverage_layout = coverage_layout.with_colorbar_tick_format(TickFormat::Fixed(3));
+    }
     let mut coverage_bar_plot = BarPlot::new();
 
     if let Some(value) = expected_error
-        && show_bar
+        && cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
+        && !variants.minority_frequencies.data.is_empty()
     {
         coverage_bar_plot =
             coverage_bar_plot.with_colored_bar(format!("exp. err. = {value:.2E}"), value, "black");
@@ -115,6 +123,7 @@ pub fn plot_coverage(
                         "#000000".to_owned()
                     },
                 )
+                .with_stroke_width(4.0)
                 .with_dasharray("8 0"),
         );
 
@@ -138,7 +147,7 @@ pub fn plot_coverage(
             ));
         }
 
-        if show_bar {
+        if cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide {
             let label = format!("{consensus_allele}2{minority_allele}");
             coverage_bar_plot = coverage_bar_plot.with_colored_bar(
                 label,
@@ -150,41 +159,48 @@ pub fn plot_coverage(
 
     let filename = format!("{target}-coverageDiagram");
 
-    // skip bar making and multiplot if using frequency for coloring, or if no
-    // variants
-    if show_bar {
-        let (coverage_bar, mut bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
-        for (idx, (position, min_freq)) in variants
-            .positions
-            .iter()
-            .zip(&variants.minority_frequencies.data)
-            .enumerate()
-        {
-            bar_layout = bar_layout.with_annotation(
-                TextAnnotation::new(position.to_string(), (idx + 2) as f64, min_freq / 2.0)
-                    .with_color("#ffffff"),
-            );
+    match cfg.plot_specific.coverage.color_option {
+        CoverageColorOption::Nucleotide => {
+            if variants.minority_frequencies.data.is_empty() {
+                return render_plot(
+                    (&filename, (coverage_plot, coverage_layout)),
+                    &cfg.io_args.output_path,
+                    cfg.io_args.output_format,
+                );
+            }
+
+            let (coverage_bar, mut bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
+            for (idx, (position, min_freq)) in variants
+                .positions
+                .iter()
+                .zip(&variants.minority_frequencies.data)
+                .enumerate()
+            {
+                bar_layout = bar_layout.with_annotation(
+                    TextAnnotation::new(position.to_string(), (idx + 2) as f64, min_freq / 2.0)
+                        .with_color("#ffffff"),
+                );
+            }
+            bar_layout = bar_layout.with_tick_format(TickFormat::Fixed(3));
+
+            let scene = Figure::new(2, 2)
+                .with_structure(vec![vec![0, 1], vec![2, 3]])
+                .with_plots(vec![coverage_plot, coverage_bar])
+                .with_layouts(vec![coverage_layout, bar_layout])
+                .render();
+
+            render_multiplot(
+                &scene,
+                &cfg.io_args.output_path,
+                &filename,
+                cfg.io_args.output_format,
+            )
         }
-        bar_layout = bar_layout.with_tick_format(TickFormat::Fixed(3));
-
-        let scene = Figure::new(2, 2)
-            .with_structure(vec![vec![0, 1], vec![2, 3]])
-            .with_plots(vec![coverage_plot, coverage_bar])
-            .with_layouts(vec![coverage_layout, bar_layout])
-            .render();
-
-        render_multiplot(
-            &scene,
-            &cfg.io_args.output_path,
-            &filename,
-            cfg.io_args.output_format,
-        )
-    } else {
-        render_plot(
+        CoverageColorOption::Frequency => render_plot(
             (&filename, (coverage_plot, coverage_layout)),
             &cfg.io_args.output_path,
             cfg.io_args.output_format,
-        )
+        ),
     }
 }
 
@@ -207,4 +223,14 @@ pub fn coverage_bar(bar: BarPlot, expected: Option<f64>) -> (Vec<Plot>, Layout) 
     } else {
         (bar, bar_layout)
     }
+}
+
+fn frequency_colorbar(freq_range: (f64, f64)) -> Plot {
+    let (min_freq, max_freq) = freq_range;
+
+    QuiverPlot::new()
+        .with_color_map(FREQ_COLORMAP)
+        .with_color_range(min_freq, max_freq)
+        .with_color_legend_label("Minority frequency")
+        .into()
 }
