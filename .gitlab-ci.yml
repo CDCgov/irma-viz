@@ -12,7 +12,7 @@ irma-viz-build:
   tags:
     - docker
   script:
-    - cargo build
+    - cargo build --features pdf
   artifacts:
     paths:
       - .cargo

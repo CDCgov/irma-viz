@@ -19,6 +19,13 @@ streamlined analysis workflows.
 - Provide flexible configuration and command-line options for customization
 - Maintain ease of use through configuration files and default settings
 
+At the time of release, `irma-viz` was approximately 22 times faster and used
+approximately 15 times less memory than the comparable R scripts it replaced.
+However, the primary goal with the re-write was to reduce the IRMA dependency
+footprint and security surface. Without an R runtime, IRMA container images
+dropped by around 250 MB uncompressed and 200 fewer system packages were
+necessary.
+
 ## Features
 
 `irma-viz` reads an IRMA out directory containing `tables/` and `matrices/`
@@ -32,9 +39,8 @@ each figure, if applicable, and renders the enabled plots.
 | `{target}-coverageDiagram`                 | `tables/{target}-variants.txt`, `tables/{target}-coverage.txt`, and `tables/{target}-pairingStats.txt`                                     |
 | `{target}-{matrix-type}`                   | `tables/{target}-variants.txt` and an enabled `matrices/{target}-{matrix-type}.sqm`; the variants table must contain more than one variant |
 
-Figures can be exported in `.pdf` or `.svg` formats. The format is selected by
-`[output_options].output_format` in `irma-viz-config.toml`, with the supplied
-default selecting `.pdf`.
+Figures can be exported in `.pdf` or `.svg` formats. See [Output
+Formats](#output-formats).
 
 ## Build
 
@@ -44,7 +50,8 @@ cargo build --profile prod
 
 ## Run
 
-To run `irma-viz`, use the following command. You may need to replace `irma-viz` with a path to the binary, or use `cargo run --` if it is not already compiled.
+To run `irma-viz`, use the following command. You may need to replace `irma-viz`
+with a path to the binary, or use `cargo run --` if it is not already compiled.
 
 ```bash
 irma-viz --input-root path/to/irma-run --paired true
@@ -53,6 +60,32 @@ irma-viz --input-root path/to/irma-run --paired true
 Note: if `READ_PERCENTAGES` plots are toggled on, and `viz_option = "pie"`
 which is the case with the default `config.toml` settings, `--paired` is a
 required CLI argument. Otherwise, the argument is not required or read.
+
+### Output Formats
+
+Figures can be exported in `.pdf` or `.svg` formats. The format is selected by
+`[output_options].output_format` in `irma-viz-config.toml`, with the supplied
+default selecting `.pdf`.
+
+To enable PDF generation, the `pdf` feature must be enabled when building or
+running `irma-viz`. If the `pdf` option is selected within
+`irma-viz-config.toml`, but the binary has not been built/run using the `pdf`
+feature, a warning will be provided, and the output will be switched to `.svg`
+for all plot generation.
+
+```bash
+cargo build --profile prod --features pdf
+```
+
+or
+
+```bash
+cargo run --features pdf -- --input-root path/to/irma-run --paired true
+```
+
+**Note:** PDF capability is currently supported but we intend to remove support
+for PDFs in a later release. PDF generation is slower, requires a much larger
+dependency tree, and results in larger outputs.
 
 ### Demo
 
@@ -233,7 +266,7 @@ For these calculations:
   spanning both sites and its overall called frequency at site `s1`/`s2`
 - `mx1`/`mx2` is the maximum of those same two frequencies at site `s1`/`s2`
 - `mnA` is the minimum of `mn2` and `mn1`
-- - `total` is the number of reads spanning the two sites, weighted by pattern
+- `total` is the number of reads spanning the two sites, weighted by pattern
   counts
 
 Different matrices/clustermaps can be enabled or disabled within

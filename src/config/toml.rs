@@ -33,7 +33,8 @@ pub struct OutputOptions {
 ///
 /// ## Errors
 ///
-/// Passes up an error if the file cannot be read, or the file cannot be deserialized   
+/// Passes up an error if the file cannot be read, or the file cannot be
+/// deserialized   
 pub fn load_config(path: &str) -> Result<TOMLConfig, PlotError> {
     let s = fs::read_to_string(path)
         .map_err(|err| PlotError::IOError(format!("reading '{path}'"), err))?;
