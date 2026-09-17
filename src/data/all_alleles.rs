@@ -11,8 +11,8 @@ const TOTAL_PROB: f64 = 0.2;
 struct AllAllelesLine {
     #[serde(rename = "Total")]
     total: f64,
-    #[serde(rename = "Frequency")]
-    frequency: f64,
+    #[serde(rename = "Frequency", deserialize_with = "option_float")]
+    frequency: Option<f64>,
     #[serde(rename = "Average_Quality", deserialize_with = "option_float")]
     average_quality: Option<f64>,
     #[serde(rename = "ConfidenceNotMacErr", deserialize_with = "option_float")]
@@ -22,8 +22,8 @@ struct AllAllelesLine {
 /// Parsed values from one target's IRMA `*-allAlleles.txt` table.
 ///
 /// Coverage totals at or below the 20th-percentile threshold are retained for
-/// the low-depth histogram. `NA` qualities and confidences are skipped, and
-/// only positive confidence values are retained.
+/// the low-depth histogram. Null-valued qualities, confidences, and
+/// frequencies are skipped, and only positive confidence values are retained.
 pub struct AllAlleles {
     pub totals: Totals,
     pub frequencies: Vec<f64>,
@@ -35,8 +35,9 @@ impl AllAlleles {
     /// Reads an all-alleles TSV file into the values used by the heuristics
     /// figure.
     ///
-    /// `NA` quality and confidence cells are skipped, zero confidence values
-    /// are excluded, and totals above the 20th percentile are discarded.
+    /// Null-valued quality, confidence, and frequency cells are skipped; zero
+    /// confidence values are excluded; and totals above the 20th percentile
+    /// are discarded.
     ///
     /// ## Errors
     ///
@@ -71,7 +72,9 @@ impl AllAlleles {
 
             all_alleles_data.totals.data.push(line.total);
 
-            all_alleles_data.frequencies.push(line.frequency);
+            if let Some(frequency) = line.frequency {
+                all_alleles_data.frequencies.push(frequency);
+            }
 
             if let Some(aq) = line.average_quality {
                 all_alleles_data.average_qualities.data.push(aq);

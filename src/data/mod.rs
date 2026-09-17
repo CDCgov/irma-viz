@@ -16,7 +16,8 @@ pub use read_counts::*;
 pub use square_matrix::*;
 pub use variants::*;
 
-/// Deserializes an IRMA numeric field, treating the literal `NA` as missing.
+/// Deserializes an IRMA numeric field, treating `NA`, `\N`, and `NULL` as
+/// missing.
 ///
 /// Every other value must parse as an [`f64`].
 fn option_float<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
@@ -25,9 +26,10 @@ where
 {
     let s: &str = Deserialize::deserialize(deserializer)?;
 
-    match s {
-        "NA" => Ok(None),
-        _ => s.parse::<f64>().map(Some).map_err(D::Error::custom),
+    if s.eq_ignore_ascii_case("NA") || s.eq_ignore_ascii_case("NULL") || s == r"\N" {
+        Ok(None)
+    } else {
+        s.parse::<f64>().map(Some).map_err(D::Error::custom)
     }
 }
 

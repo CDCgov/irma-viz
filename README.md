@@ -196,6 +196,16 @@ pie charts by setting `viz_option = "sankey"` under `[percent_options]` in
 
 ![ReadPercentages_sankey](demo/READ_PERCENTAGES_sankey.svg)
 
+**Note:** Despite being similar in the information they present, these two plots
+are not completely interchangeable. Both visualizations are derived from the
+same `tables/READ_COUNTS.txt` input. The Sankey uses the `Reads` column
+throughout: it preserves the individual pass-QC outcomes and shows both primary
+(`4-*`) and alternate (`5-*`) target matches. The pie dashboard uses a different
+aggregation for each panel: the total-reads pie uses `Reads` and combines
+non-primary outcomes into **Other**; the pass-QC pie uses `Patterns`, combining
+alternate and unrecognizable patterns into **Unusable**; and the target pie uses
+`PairsAndWidows` for primary (`4-*`) targets only.
+
 ### Heuristics
 
 ![A_NP_heuristics](demo/A_NP-heuristics.svg)
