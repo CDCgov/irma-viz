@@ -62,13 +62,16 @@ pub fn kuva_coverage(coverage: Coverage) -> Vec<Plot> {
 pub fn plot_coverage(
     coverage: Coverage,
     variants: AllVariants,
-    pairing_stats: PairingStats,
+    pairing_stats: Option<PairingStats>,
     cfg: &ParsedConfig,
     target: &str,
 ) -> Result<(), PlotError> {
     const OFFSET: f64 = 20.5;
 
-    let expected_error = pairing_stats.data.get("ExpectedErrorRate").copied();
+    let expected_error = pairing_stats
+        .as_ref()
+        .and_then(|stats| stats.data.get("ExpectedErrorRate"))
+        .copied();
     let freq_range = (
         variants.minority_frequencies.min,
         variants.minority_frequencies.max,

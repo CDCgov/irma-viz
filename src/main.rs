@@ -247,9 +247,9 @@ fn run_coverage(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
 ///
 /// ## Errors
 ///
-/// Passes up an error if there is an error parsing [`Coverage`], if there is an
-/// error parsing [`AllVariants`], if there is an error parsing [`PairingStats`],
-/// or if an IO Error arises during [`plot_coverage`]
+/// Passes up an error if there is an error parsing [`Coverage`] or
+/// [`AllVariants`], if the optional [`PairingStats`] file exists but cannot be
+/// parsed, or if an IO Error arises during [`plot_coverage`].
 fn run_coverage_for_target(cfg: &ParsedConfig, target: &str) -> Result<(), PlotError> {
     let coverage_path = cfg
         .io_args
@@ -280,15 +280,21 @@ fn run_coverage_for_target(cfg: &ParsedConfig, target: &str) -> Result<(), PlotE
         .io_args
         .table_path
         .join(format!("{target}-pairingStats.txt"));
-    let pairing_stats = PairingStats::import_from_file(&pairing_stats_path).map_err(|err| {
-        PlotError::IOError(
-            format!(
-                "failed to read pairing-stats data from '{}'",
-                pairing_stats_path.display()
-            ),
-            err,
+    let pairing_stats = if pairing_stats_path.is_file() {
+        Some(
+            PairingStats::import_from_file(&pairing_stats_path).map_err(|err| {
+                PlotError::IOError(
+                    format!(
+                        "failed to read pairing-stats data from '{}'",
+                        pairing_stats_path.display()
+                    ),
+                    err,
+                )
+            })?,
         )
-    })?;
+    } else {
+        None
+    };
 
     plot_coverage(coverage, variants, pairing_stats, cfg, target)
 }

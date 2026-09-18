@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file. The format
 is roughly based on [Keep a Changelog], and this project tries to adhere to
 [Semantic Versioning].
 
+## [0.2.2-dev] - TBD
+
+### Changed
+
+- When `pairingStats` file is now missing (namely for single-ended inputs), the
+  `exp. err` bar and reference line in coverage will be omitted rather than
+  throwing an error
+
 ## [0.2.1] - 2026-09-17
 
 ### Changed
@@ -62,6 +70,7 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 - Initial release. irma-viz can reproduce the original IRMA plots.
 
 <!-- Versions -->
+[0.2.2-dev]: https://github.com/CDCgov/irma-viz/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/CDCgov/irma-viz/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/CDCgov/irma-viz/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/CDCgov/irma-viz/compare/v0.1.0...v0.1.1

@@ -12,8 +12,7 @@ use crate::{
 };
 
 const HEURISTICS_REQUIRED_SUFFIXES: &[&str] = &["-allAlleles.txt"];
-const COVERAGE_REQUIRED_TABLE_SUFFIXES: &[&str] =
-    &["-variants.txt", "-coverage.txt", "-pairingStats.txt"];
+const COVERAGE_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt", "-coverage.txt"];
 const CLUSTERMAP_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt"];
 
 /// Stores a list of targets seperately for each matrix type
@@ -97,7 +96,9 @@ pub fn discover_heuristics_targets(cfg: &ParsedConfig) -> Result<BTreeSet<String
 /// A valid coverage target includes the following files
 /// - {target}-variants.txt
 /// - {target}-coverage.txt
-/// - {target}-pairingStats.txt
+///
+/// The optional `{target}-pairingStats.txt` file supplies the expected-error
+/// bar and reference line when available.
 ///
 /// ## Errors
 ///

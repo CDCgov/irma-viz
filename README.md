@@ -32,12 +32,12 @@ necessary.
 subdirectories, discovers candidate `ctype`s (compound-types) independently for
 each figure, if applicable, and renders the enabled plots.
 
-| Figure                                     | Required input                                                                                                                             |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `READ_PERCENTAGES` Sankey or pie dashboard | `tables/READ_COUNTS.txt`                                                                                                                   |
-| `{target}-heuristics`                      | `tables/{target}-allAlleles.txt`                                                                                                           |
-| `{target}-coverageDiagram`                 | `tables/{target}-variants.txt`, `tables/{target}-coverage.txt`, and `tables/{target}-pairingStats.txt`                                     |
-| `{target}-{matrix-type}`                   | `tables/{target}-variants.txt` and an enabled `matrices/{target}-{matrix-type}.sqm`; the variants table must contain more than one variant |
+| Figure                                     | Required input                                                                                                                                            |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `READ_PERCENTAGES` Sankey or pie dashboard | `tables/READ_COUNTS.txt`                                                                                                                                  |
+| `{target}-heuristics`                      | `tables/{target}-allAlleles.txt`                                                                                                                          |
+| `{target}-coverageDiagram`                 | `tables/{target}-variants.txt` and `tables/{target}-coverage.txt`; `tables/{target}-pairingStats.txt` is optional and supplies expected-error annotations |
+| `{target}-{matrix-type}`                   | `tables/{target}-variants.txt` and an enabled `matrices/{target}-{matrix-type}.sqm`; the variants table must contain more than one variant                |
 
 Figures can be exported in `.pdf` or `.svg` formats. See [Output
 Formats](#output-formats).
@@ -304,9 +304,12 @@ chart shows their observed frequencies.
 The bar-chart labels show the consensus allele followed by the minority allele,
 and the number on a bar is its position. For example, a bar labeled `A2G` with
 `38` on the bar represents consensus `A` and minority `G` at position 38. Bar
-colors and their reference lines follow the minority nucleotide. When the bar
-chart is shown and the pairing statistics contain `ExpectedErrorRate`, the `exp.
-err.` bar and horizontal line show that value; variant lines below it are black.
+colors and their reference lines follow the minority nucleotide. 
+
+For paired-end data, a `irma-viz` checks for `pairingStats` file, which is used
+to create a bar and reference line on the bar chart showing the expected error
+rate. For single-ended input, the `pairingStats` file will not be created by
+IRMA, so the bar plot will omit the expected-error annotations.
 
 ![A_NP-coverage](demo/A_NP-coverageDiagram.svg)
 
