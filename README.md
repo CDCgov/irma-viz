@@ -304,7 +304,7 @@ chart shows their observed frequencies.
 The bar-chart labels show the consensus allele followed by the minority allele,
 and the number on a bar is its position. For example, a bar labeled `A2G` with
 `38` on the bar represents consensus `A` and minority `G` at position 38. Bar
-colors and their reference lines follow the minority nucleotide. 
+colors and their reference lines follow the minority nucleotide.
 
 For paired-end data, a `irma-viz` checks for `pairingStats` file, which is used
 to create a bar and reference line on the bar chart showing the expected error

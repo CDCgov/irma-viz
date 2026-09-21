@@ -66,7 +66,8 @@ pub fn plot_coverage(
     cfg: &ParsedConfig,
     target: &str,
 ) -> Result<(), PlotError> {
-    const OFFSET: f64 = 20.5;
+    const LABEL_OFFSET_FRACTION: f64 = 0.014;
+    const VERTICAL_TIER_MULTIPLIER: f64 = 2.5;
 
     let expected_error = pairing_stats
         .as_ref()
@@ -95,6 +96,12 @@ pub fn plot_coverage(
     if cfg.plot_specific.coverage.color_option == CoverageColorOption::Frequency {
         coverage_layout = coverage_layout.with_colorbar_tick_format(TickFormat::Fixed(3));
     }
+
+    let (min_x, max_x) = coverage_layout.x_range;
+    let (min_y, max_y) = coverage_layout.y_range;
+    let x_offset = (max_x - min_x) * LABEL_OFFSET_FRACTION;
+    let y_offset = (max_y - min_y) * LABEL_OFFSET_FRACTION * VERTICAL_TIER_MULTIPLIER;
+
     let mut coverage_bar_plot = BarPlot::new();
 
     if let Some(value) = expected_error
@@ -135,7 +142,6 @@ pub fn plot_coverage(
         );
 
         if position <= coverage.coverage.len() && position != 0 {
-            let (min_y, _) = coverage_layout.y_range;
             // Check if this label would overlap with any previous labels
             // TODO: Try to break this by going off the bottom axis; test
             let mut annotation_y_pos =
@@ -143,13 +149,13 @@ pub fn plot_coverage(
             for prev_index in (0..index).rev() {
                 let prev_pos = variants.positions[prev_index];
                 let distance = position.abs_diff(prev_pos);
-                if OFFSET > distance as f64 && annotation_y_pos - 2.5 * OFFSET > min_y {
-                    annotation_y_pos -= 2.5 * OFFSET;
+                if x_offset > distance as f64 && annotation_y_pos - y_offset > min_y {
+                    annotation_y_pos -= y_offset;
                 }
             }
             coverage_layout = coverage_layout.with_annotation(TextAnnotation::new(
                 minority_allele,
-                (position as f64) + OFFSET,
+                (position as f64) + x_offset,
                 annotation_y_pos,
             ));
         }
@@ -177,6 +183,7 @@ pub fn plot_coverage(
             }
 
             let (coverage_bar, mut bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
+            let first_variant_bar_x = 1 + usize::from(expected_error.is_some());
             for (idx, (position, min_freq)) in variants
                 .positions
                 .iter()
@@ -184,8 +191,12 @@ pub fn plot_coverage(
                 .enumerate()
             {
                 bar_layout = bar_layout.with_annotation(
-                    TextAnnotation::new(position.to_string(), (idx + 2) as f64, min_freq / 2.0)
-                        .with_color("#ffffff"),
+                    TextAnnotation::new(
+                        position.to_string(),
+                        (idx + first_variant_bar_x) as f64,
+                        min_freq / 2.0,
+                    )
+                    .with_color("#ffffff"),
                 );
             }
             bar_layout = bar_layout.with_tick_format(TickFormat::Fixed(3));
