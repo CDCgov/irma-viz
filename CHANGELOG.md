@@ -12,6 +12,11 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
   `exp. err` bar and reference line in coverage will be omitted rather than
   throwing an error
 
+### Fixed
+
+- Fixed `READ_PERCENTAGES` pie charts from rendering as lines rather than
+  circles when only one slice is present
+
 ## [0.2.1] - 2026-09-17
 
 ### Changed

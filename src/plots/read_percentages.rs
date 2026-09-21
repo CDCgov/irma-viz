@@ -89,7 +89,11 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(),
     }
     let (legend_entries, total_pie) = kuva_pie(vals, &legend_labels, &pal);
 
-    let total_pie = vec![total_pie.with_legend("").into()];
+    let total_pie = vec![
+        single_slice_circle_workaround(total_pie)
+            .with_legend("")
+            .into(),
+    ];
     let total_layout = Layout::auto_from_plots(&total_pie)
         .with_title({
             if paired {
@@ -135,10 +139,12 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(),
     let (legend_entries, passed_qc_pie) = kuva_pie(vals, &legend_labels, &pal);
 
     let passed_qc_pie = vec![
-        passed_qc_pie
-            .with_legend("")
-            .with_label_position(kuva::plot::PieLabelPosition::Outside)
-            .into(),
+        single_slice_circle_workaround(
+            passed_qc_pie
+                .with_legend("")
+                .with_label_position(kuva::plot::PieLabelPosition::Outside),
+        )
+        .into(),
     ];
     let passed_qc_layout = Layout::auto_from_plots(&passed_qc_pie)
         .with_title("2. Percentages of all read patterns passing QC")
@@ -186,9 +192,10 @@ pub fn plot_perc_pies(read_counts: ReadCounts, cfg: &ParsedConfig) -> Result<(),
     }
 
     let match_pie = vec![
-        match_pie
-            .with_label_position(kuva::plot::PieLabelPosition::Outside)
-            .into(),
+        single_slice_circle_workaround(
+            match_pie.with_label_position(kuva::plot::PieLabelPosition::Outside),
+        )
+        .into(),
     ];
     let match_layout = Layout::auto_from_plots(&match_pie)
         .with_scale(1.0)
@@ -256,6 +263,33 @@ fn kuva_pie(
     (legend_entries, pie)
 }
 
+/// Overrides a single-slice pie chart to instead create a tiny second slice,
+/// preventing the 100% issue.
+///
+/// Kuva, because of [SVG shortcomings], renders a single-slice pie chart to a
+/// line. This workaround adds a same-colour, unlabeled "ghost" slice so the
+/// visible slice is slightly less than 360.
+///
+/// [SVG shortcomings]:
+///     https://www.dev-toolbox.tech/tools/svg-path-editor/examples/circle-path
+// TODO: Remove when `kuva` is updated with this fix
+fn single_slice_circle_workaround(pie: PiePlot) -> PiePlot {
+    const GHOST_SLICE_FRACTION: f64 = 1e-6;
+
+    let Some(slice) = (pie.slices.len() == 1).then(|| &pie.slices[0]) else {
+        return pie;
+    };
+
+    let ghost = slice.value * GHOST_SLICE_FRACTION;
+    // keep the same color as the original slice
+    let color = slice.color.clone();
+
+    pie.with_slice("", ghost, color)
+        // A blank outside label would still have a line pointing to it, so
+        // putting the position of the line inside the circle removes that
+        .with_label_position(kuva::plot::PieLabelPosition::Inside)
+}
+
 /// Formats pie labels as percentage-of-total values with compact read counts.
 fn make_slice_labels(vals: &[f64]) -> Vec<String> {
     let mut slice_labels = Vec::with_capacity(vals.len());
@@ -272,6 +306,7 @@ fn make_slice_labels(vals: &[f64]) -> Vec<String> {
     }
     slice_labels
 }
+
 /// READMEs included in pie dashboard; copied from original IRMA R-script
 const SINGLE_README: &str = "# READ PROPORTIONS.\n\
 \n\
