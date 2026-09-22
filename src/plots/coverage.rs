@@ -66,8 +66,12 @@ pub fn plot_coverage(
     cfg: &ParsedConfig,
     target: &str,
 ) -> Result<(), PlotError> {
-    const LABEL_OFFSET_FRACTION: f64 = 0.014;
-    const VERTICAL_TIER_MULTIPLIER: f64 = 2.5;
+    const NUC_LINE_WIDTH: f64 = 1.5;
+    const FREQ_LINE_WIDTH: f64 = 4.0;
+
+    const LABEL_OFFSET_FRACTION: f64 = 0.005;
+    const VERTICAL_TIER_MULTIPLIER: f64 = 4.5;
+    const LABEL_COLLISION_RADIUS: f64 = 2.0;
 
     let expected_error = pairing_stats
         .as_ref()
@@ -103,6 +107,7 @@ pub fn plot_coverage(
     let y_offset = (max_y - min_y) * LABEL_OFFSET_FRACTION * VERTICAL_TIER_MULTIPLIER;
 
     let mut coverage_bar_plot = BarPlot::new();
+    let mut placed_labels: Vec<(usize, f64)> = Vec::new();
 
     if let Some(value) = expected_error
         && cfg.plot_specific.coverage.color_option == CoverageColorOption::Nucleotide
@@ -112,14 +117,12 @@ pub fn plot_coverage(
             coverage_bar_plot.with_colored_bar(format!("exp. err. = {value:.2E}"), value, "black");
     }
 
-    for (index, (((&position, &consensus_allele), &minority_allele), &minority_frequency)) in
-        variants
-            .positions
-            .iter()
-            .zip(&variants.consensus_alleles)
-            .zip(&variants.minority_alleles)
-            .zip(&variants.minority_frequencies.data)
-            .enumerate()
+    for (((&position, &consensus_allele), &minority_allele), &minority_frequency) in variants
+        .positions
+        .iter()
+        .zip(&variants.consensus_alleles)
+        .zip(&variants.minority_alleles)
+        .zip(&variants.minority_frequencies.data)
     {
         coverage_layout = coverage_layout.with_reference_line(
             ReferenceLine::vertical(position as f64)
@@ -137,22 +140,35 @@ pub fn plot_coverage(
                         "#000000".to_owned()
                     },
                 )
-                .with_stroke_width(4.0)
+                .with_stroke_width(match cfg.plot_specific.coverage.color_option {
+                    crate::config::CoverageColorOption::Nucleotide => NUC_LINE_WIDTH,
+                    crate::config::CoverageColorOption::Frequency => FREQ_LINE_WIDTH,
+                })
                 .with_dasharray("8 0"),
         );
 
         if position <= coverage.coverage.len() && position != 0 {
-            // Check if this label would overlap with any previous labels
-            // TODO: Try to break this by going off the bottom axis; test
             let mut annotation_y_pos =
                 (coverage.coverage[position.saturating_sub(1)] + min_y) / 2.0;
-            for prev_index in (0..index).rev() {
-                let prev_pos = variants.positions[prev_index];
-                let distance = position.abs_diff(prev_pos);
-                if x_offset > distance as f64 && annotation_y_pos - y_offset > min_y {
-                    annotation_y_pos -= y_offset;
+            // Cap iterations to the number of labels that fit twice over, so a
+            // crowded region can wrap top-to-bottom once without looping
+            // forever.
+            let capacity =
+                (((max_y - min_y) / (LABEL_COLLISION_RADIUS * y_offset)).floor() as usize).max(1);
+            for _ in 0..capacity * 2 {
+                let collides = placed_labels.iter().any(|&(prev_pos, prev_y)| {
+                    (position.abs_diff(prev_pos) as f64) < LABEL_COLLISION_RADIUS * x_offset
+                        && (annotation_y_pos - prev_y).abs() < LABEL_COLLISION_RADIUS * y_offset
+                });
+                if !collides {
+                    break;
+                }
+                annotation_y_pos -= y_offset;
+                if annotation_y_pos <= min_y {
+                    annotation_y_pos = max_y - y_offset;
                 }
             }
+            placed_labels.push((position, annotation_y_pos));
             coverage_layout = coverage_layout.with_annotation(TextAnnotation::new(
                 minority_allele,
                 (position as f64) + x_offset,
@@ -184,7 +200,7 @@ pub fn plot_coverage(
 
             let (coverage_bar, mut bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
             let first_variant_bar_x = 1 + usize::from(expected_error.is_some());
-            for (idx, (position, min_freq)) in variants
+            for (idx, (&position, &min_freq)) in variants
                 .positions
                 .iter()
                 .zip(&variants.minority_frequencies.data)
