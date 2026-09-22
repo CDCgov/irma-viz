@@ -15,6 +15,17 @@ const HEURISTICS_REQUIRED_SUFFIXES: &[&str] = &["-allAlleles.txt"];
 const COVERAGE_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt", "-coverage.txt"];
 const CLUSTERMAP_REQUIRED_TABLE_SUFFIXES: &[&str] = &["-variants.txt"];
 
+/// Discovers targets with a variants table, regardless of whether a
+/// corresponding clustermap matrix was produced.
+///
+/// This distinguishes an expected lack of variants from a failure to render
+/// otherwise available clustermap data.
+pub fn discover_clustermap_variant_targets(
+    cfg: &ParsedConfig,
+) -> Result<BTreeSet<String>, PlotError> {
+    discover_candidate_targets(&cfg.io_args.table_path, CLUSTERMAP_REQUIRED_TABLE_SUFFIXES)
+}
+
 /// Stores a list of targets seperately for each matrix type
 #[derive(Debug, Default)]
 pub struct ClusterTargets {

@@ -17,6 +17,8 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 - Fixed `READ_PERCENTAGES` pie charts from rendering as lines rather than
   circles when only one slice is present
 - Improved coverage bar label placement to always be fully inside or outside bar
+- Removed unecessary warnings for no clustermap targets, since it is expected to
+  often not see variants for a given sample
 
 ## [0.2.1] - 2026-09-17
 

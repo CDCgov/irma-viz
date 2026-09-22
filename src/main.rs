@@ -1,8 +1,8 @@
 use crate::{
     config::{
         CLIConfig, ClusterOption, ClusterTargets, MatrixType, ParsedConfig, PercentVizOption,
-        discover_clustermap_targets, discover_coverage_targets, discover_heuristics_targets,
-        load_config,
+        discover_clustermap_targets, discover_clustermap_variant_targets,
+        discover_coverage_targets, discover_heuristics_targets, load_config,
     },
     data::{AllAlleles, AllVariants, Coverage, PairingStats, ReadCounts, SankeyVec, SquareMatrix},
     diagnostics::{PlotError, Severity, print_results, warn, warn_plot_error},
@@ -114,9 +114,11 @@ fn main() {
 
     if cfg.plot_toggles.clustermap {
         match run_clustermap(&cfg) {
-            Ok(summary) => {
+            Ok(Some(summary)) => {
                 print_results(summary, "clustermap");
             }
+            // Clustermap inputs are not expected when IRMA found no variants.
+            Ok(None) => {}
             Err(err) => {
                 warn(Severity::Failure, err);
             }
@@ -301,29 +303,70 @@ fn run_coverage_for_target(cfg: &ParsedConfig, target: &str) -> Result<(), PlotE
 
 /// Discovers all possible clustermap targets, then attempts to plot each one,
 /// using [`run_clustermap_for_target`]. Errors that arise during plot creation
-/// are handled and reported within the loop. Returns a list of the successfully
-/// rendered target-matrix pairs.
+/// are handled and reported within the loop. Returns `None` when no variants
+/// exist, otherwise returns the successfully rendered target-matrix pairs.
 ///
 /// ## Errors
 ///
 /// Will return an error if IO operations within [`discover_clustermap_targets`]
 /// fail.
-fn run_clustermap(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
+fn run_clustermap(cfg: &ParsedConfig) -> Result<Option<Vec<String>>, PlotError> {
     let cluster_targets = discover_clustermap_targets(cfg)?;
+    let matrix_targets = cluster_targets.variant_targets();
     let mut summary = Vec::new();
+    let mut has_variant_data = false;
 
-    for target in cluster_targets.variant_targets() {
-        match run_clustermap_for_target(cfg, &cluster_targets, &target) {
-            Ok(target_summary) => {
+    for target in &matrix_targets {
+        match run_clustermap_for_target(cfg, &cluster_targets, target) {
+            Ok(Some(target_summary)) => {
+                has_variant_data = true;
                 summary.extend(target_summary);
             }
+            // don't create a clustermap for a variants table without rows
+            Ok(None) => {}
             Err(err) => {
-                warn_plot_error("clustermap", Some(&target), &err);
+                has_variant_data = true;
+                warn_plot_error("clustermap", Some(target), &err);
             }
         }
     }
 
-    Ok(summary)
+    // IRMA does not create matrix files if there are no variants, so there may
+    // be no matrix targets looked at in the logic above to populate
+    // has_variant_data. We look at the remaining variants tables to help decide
+    // whether to warn about no plots being created.
+    if !has_variant_data && summary.is_empty() {
+        for target in discover_clustermap_variant_targets(cfg)? {
+            if matrix_targets.contains(&target) {
+                continue;
+            }
+
+            let variants_path = cfg
+                .io_args
+                .table_path
+                .join(format!("{target}-variants.txt"));
+            match AllVariants::import_from_file(&variants_path) {
+                Ok(variants) if !variants.positions.is_empty() => has_variant_data = true,
+                Ok(_) => {}
+                Err(err) => {
+                    has_variant_data = true;
+                    warn_plot_error(
+                        "clustermap",
+                        Some(&target),
+                        &PlotError::IOError(
+                            format!(
+                                "failed to read variants data from '{}'",
+                                variants_path.display()
+                            ),
+                            err,
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(has_variant_data.then_some(summary))
 }
 
 /// Imports the variants data and creates clustermap plots for each enabled
@@ -331,16 +374,16 @@ fn run_clustermap(cfg: &ParsedConfig) -> Result<Vec<String>, PlotError> {
 ///
 /// ## Errors
 ///
-/// Passes up an error if there is an error parsing [`AllVariants`], if fewer
-/// than two variants are present for the target, or if IO errors arise while
-/// preparing clustermap inputs. Errors from individual matrix-type renders are
-/// handled and reported within the loop. Returns a list of successfully
-/// rendered target-matrix pairs.
+/// Passes up an error if there is an error parsing [`AllVariants`], if exactly
+/// one variant is present for the target, or if IO errors arise while preparing
+/// clustermap inputs. Errors from individual matrix-type renders are handled
+/// and reported within the loop. Returns `None` when the target has no
+/// variants, otherwise returns its successfully rendered target-matrix pairs.
 fn run_clustermap_for_target(
     cfg: &ParsedConfig,
     cluster_targets: &ClusterTargets,
     target: &str,
-) -> Result<Vec<String>, PlotError> {
+) -> Result<Option<Vec<String>>, PlotError> {
     let clustermap_targets = cfg
         .plot_specific
         .cluster_config
@@ -364,9 +407,11 @@ fn run_clustermap_for_target(
         )
     })?;
 
-    // this shouldn't ever trigger because if there is not enough variants then
-    // the target will not get added as a valid target
-    if variants.positions.len() <= 1 {
+    if variants.positions.is_empty() {
+        return Ok(None);
+    }
+
+    if variants.positions.len() == 1 {
         return Err(PlotError::MissingData(format!(
             "no clustermap data found for target '{target}'"
         )));
@@ -389,7 +434,7 @@ fn run_clustermap_for_target(
         }
     }
 
-    Ok(summary)
+    Ok(Some(summary))
 }
 
 /// Imports the matrix data and creates a clustermap or tree plot for a single
