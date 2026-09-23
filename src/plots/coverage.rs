@@ -6,9 +6,37 @@ use crate::{
     diagnostics::PlotError,
     plots::{colorbar_plot, render_multiplot, render_plot},
 };
-use kuva::{prelude::*, render::annotations::TextAnnotation};
+use kuva::{
+    prelude::*,
+    render::{annotations::TextAnnotation, layout::ComputedLayout},
+};
 
 const FREQ_COLORMAP: ColorMap = ColorMap::Viridis;
+// default sizes, in pixels, for the multiplot subplots, so that we can use the
+// size of the bars in pixels to decide the placement of the labels
+const COVERAGE_FIGURE_CELL_WIDTH: f64 = 500.0;
+const COVERAGE_FIGURE_CELL_HEIGHT: f64 = 380.0;
+const COVERAGE_FIGURE_SPACING: f64 = 15.0;
+const BAR_LABEL_FONT_SIZE: u32 = 12;
+/// Minimum rendered bar height that leaves room for a centered position label.
+// Kuva uses a 6 pixel offset for text, so this value gives enough space for
+// the labels.
+const MIN_INSIDE_BAR_LABEL_HEIGHT_PX: f64 = 30.0;
+
+/// Returns whether a bar is tall enough to contain its position label.
+fn label_fits_inside_bar(bar_height_px: f64) -> bool {
+    bar_height_px >= MIN_INSIDE_BAR_LABEL_HEIGHT_PX
+}
+
+/// Returns the label's vertical position: centered within a tall bar or at
+/// the bar top, where Kuva renders the text immediately above a short bar.
+fn bar_label_y_position(value: f64, bar_height_px: f64) -> f64 {
+    if label_fits_inside_bar(bar_height_px) {
+        value / 2.0
+    } else {
+        value
+    }
+}
 
 /// Returns the corresponding color for a minority allele, based on nucleotide
 /// identity, used in bars and reference lines.
@@ -199,6 +227,12 @@ pub fn plot_coverage(
             }
 
             let (coverage_bar, mut bar_layout) = coverage_bar(coverage_bar_plot, expected_error);
+            // The bar plot spans both columns in the lower row of this figure.
+            // Set the same dimensions here that Figure uses so label placement can
+            // be decided from the rendered (pixel) height, not a data-value cutoff.
+            bar_layout.width = Some(COVERAGE_FIGURE_CELL_WIDTH * 2.0 + COVERAGE_FIGURE_SPACING);
+            bar_layout.height = Some(COVERAGE_FIGURE_CELL_HEIGHT);
+            let bar_computed_layout = ComputedLayout::from_layout(&bar_layout);
             let first_variant_bar_x = 1 + usize::from(expected_error.is_some());
             for (idx, (&position, &min_freq)) in variants
                 .positions
@@ -206,19 +240,33 @@ pub fn plot_coverage(
                 .zip(&variants.minority_frequencies.data)
                 .enumerate()
             {
+                let bar_height_px =
+                    (bar_computed_layout.map_y(0.0) - bar_computed_layout.map_y(min_freq)).abs();
+                let label_fits_inside = label_fits_inside_bar(bar_height_px);
                 bar_layout = bar_layout.with_annotation(
                     TextAnnotation::new(
                         position.to_string(),
                         (idx + first_variant_bar_x) as f64,
-                        min_freq / 2.0,
+                        bar_label_y_position(min_freq, bar_height_px),
                     )
-                    .with_color("#ffffff"),
+                    // this currently does not work due to an issue with kuva's
+                    // renderer setting the label color to None; the labels will
+                    // always be black. Leaving this logic in here in case we
+                    // can get it fixed upstream
+                    .with_color(if label_fits_inside {
+                        "#ffffff"
+                    } else {
+                        "#000000"
+                    })
+                    .with_font_size(BAR_LABEL_FONT_SIZE),
                 );
             }
             bar_layout = bar_layout.with_tick_format(TickFormat::Fixed(3));
 
             let scene = Figure::new(2, 2)
                 .with_structure(vec![vec![0, 1], vec![2, 3]])
+                .with_cell_size(COVERAGE_FIGURE_CELL_WIDTH, COVERAGE_FIGURE_CELL_HEIGHT)
+                .with_spacing(COVERAGE_FIGURE_SPACING)
                 .with_plots(vec![coverage_plot, coverage_bar])
                 .with_layouts(vec![coverage_layout, bar_layout])
                 .render();

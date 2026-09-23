@@ -16,6 +16,7 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 
 - Fixed `READ_PERCENTAGES` pie charts from rendering as lines rather than
   circles when only one slice is present
+- Improved coverage bar label placement to always be fully inside or outside bar
 
 ## [0.2.1] - 2026-09-17
 
