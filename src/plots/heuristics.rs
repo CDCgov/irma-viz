@@ -60,12 +60,14 @@ pub fn plot_heuristics(
                 average_qualities.min,
                 average_qualities.max,
             );
+            let y_span = (max_y - min_y).abs();
+            let buffer = if y_span == 0.0 { 1.0 } else { y_span * 0.02 };
             let aq_dens_layout = Layout::auto_from_plots(&aq_density)
                 .with_title("Density of average allele quality")
                 .with_x_axis_min(average_qualities.min)
                 .with_x_axis_max(average_qualities.max)
-                .with_y_axis_min(min_y - min_y * 0.05)
-                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_y_axis_min(min_y - buffer)
+                .with_y_axis_max(max_y + buffer)
                 .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
                 .with_show_grid(false);
 
@@ -89,12 +91,14 @@ pub fn plot_heuristics(
         } else {
             let (limited_aq_density, min_y, max_y) =
                 kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
+            let y_span = (max_y - min_y).abs();
+            let buffer = if y_span == 0.0 { 1.0 } else { y_span * 0.02 };
             let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
                 .with_title(format!("to {min_aq}"))
                 .with_x_axis_min(average_qualities.min)
                 .with_x_axis_max(min_aq)
-                .with_y_axis_min(min_y - min_y * 0.05)
-                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_y_axis_min(min_y - buffer)
+                .with_y_axis_max(max_y + buffer)
                 .with_show_grid(false);
 
             plots.push(limited_aq_density);
@@ -112,12 +116,14 @@ pub fn plot_heuristics(
             );
         } else {
             let (freq_density, min_y, max_y) = kuva_dens(frequencies, 0.0, 0.1);
+            let y_span = (max_y - min_y).abs();
+            let buffer = if y_span == 0.0 { 1.0 } else { y_span * 0.02 };
             let freq_dens_layout = Layout::auto_from_plots(&freq_density)
                 .with_title("Density of observed frequency (to 10%)")
                 .with_x_axis_min(0.0)
                 .with_x_axis_max(0.1)
-                .with_y_axis_min(min_y - min_y * 0.05)
-                .with_y_axis_max(max_y + max_y * 0.05)
+                .with_y_axis_min(min_y - buffer)
+                .with_y_axis_max(max_y + buffer)
                 .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
                 .with_show_grid(false);
 
@@ -138,12 +144,14 @@ pub fn plot_heuristics(
             }
         } else {
             let (lim_freq_dens, min_y, max_y) = kuva_dens(frequencies, 0.0, min_f);
+            let y_span = (max_y - min_y).abs();
+            let buffer = if y_span == 0.0 { 1.0 } else { y_span * 0.02 };
             let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
                 .with_title(format!("to {min_f}"))
                 .with_x_axis_min(0.0)
                 .with_x_axis_max(min_f)
-                .with_y_axis_min(min_y - min_y * 0.001)
-                .with_y_axis_max(max_y + max_y * 0.001)
+                .with_y_axis_min(min_y - buffer)
+                .with_y_axis_max(max_y + buffer)
                 .with_show_grid(false);
 
             plots.push(lim_freq_dens);
@@ -260,7 +268,16 @@ fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {
         }
     }
 
-    (vec![LinePlot::new().with_data(curve).into()], min_y, max_y)
+    let ref_line = LinePlot::new()
+        .with_data(vec![(x_lo, 0), (x_hi, 0)])
+        .with_color("#d8d8d8")
+        .with_stroke_width(0.5);
+
+    (
+        vec![ref_line.into(), LinePlot::new().with_data(curve).into()],
+        min_y,
+        max_y,
+    )
 }
 
 /// Builds a histogram using explicit bin edges so the rendered plot follows
