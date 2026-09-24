@@ -120,10 +120,16 @@ pub fn plot_coverage(
         ));
     }
 
+    let xlabel = if let Some(name) = &cfg.plot_specific.coverage.sample_name {
+        format!("{target} position ({name})")
+    } else {
+        format!("{target} position")
+    };
+
     let mut coverage_layout = Layout::auto_from_plots(&coverage_plot)
         .with_clamp_axis()
         .with_y_label("Coverage depth")
-        .with_x_label(format!("{target} position"))
+        .with_x_label(xlabel)
         .with_show_grid(false);
     if cfg.plot_specific.coverage.color_option == CoverageColorOption::Frequency {
         coverage_layout = coverage_layout.with_colorbar_tick_format(TickFormat::Fixed(3));

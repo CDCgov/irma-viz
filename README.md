@@ -143,14 +143,15 @@ These options are provided by CLI. The heuristics parameters are used only for
 plot reference lines and axis boundaries; changing them does not recalculate the
 underlying IRMA outputs. These defaults are from `IRMA`'s `FLU` module.
 
-| Parameter                              | Plot             | Default                          | Type     | Description                                                                                                              |
-| -------------------------------------- | ---------------- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `--min-variant-average-quality`        | heuristics       | 24.0                             | \[0,64\] | Average-allele-quality reference line and zoom-panel upper bound                                                         |
-| `--min-variant-frequency`              | heuristics       | 0.008                            | \[0,1\]  | Minority-allele-frequency reference line and zoom-panel upper bound                                                      |
-| `--min-variant-depth`                  | heuristics       | 100                              | ≥ 1      | Coverage-depth histogram reference line                                                                                  |
-| `--min-confidence-not-sequencer-error` | heuristics       | 0.8                              | \[0,1\]  | Confidence histogram reference line                                                                                      |
-| `--paired`                             | read-percentages | Required for enabled pie output  | Boolean  | Selects paired-end wording in the pie dashboard if `viz_option = "pie"` is set; otherwise is not read                    |
-| `--tree-height`                        | clustermap       | `0.78` in `irma-viz-config.toml` | \[0,1\]  | Overrides the displayed dendrogram cutoff line in the clustermap if `cluster_option = "tree"` is set; otherwise not used |
+| Parameter                              | Plot             | Default                          | Type            | Description                                                                                                              |
+| -------------------------------------- | ---------------- | -------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `--min-variant-average-quality`        | heuristics       | 24.0                             | \[0,64\]        | Average-allele-quality reference line and zoom-panel upper bound                                                         |
+| `--min-variant-frequency`              | heuristics       | 0.008                            | \[0,1\]         | Minority-allele-frequency reference line and zoom-panel upper bound                                                      |
+| `--min-variant-depth`                  | heuristics       | 100                              | ≥ 1             | Coverage-depth histogram reference line                                                                                  |
+| `--min-confidence-not-sequencer-error` | heuristics       | 0.8                              | \[0,1\]         | Confidence histogram reference line                                                                                      |
+| `--paired`                             | read-percentages | Required for enabled pie output  | Boolean         | Selects paired-end wording in the pie dashboard if `viz_option = "pie"` is set; otherwise is not read                    |
+| `--tree-height`                        | clustermap       | `0.78` in `irma-viz-config.toml` | \[0,1\]         | Overrides the displayed dendrogram cutoff line in the clustermap if `cluster_option = "tree"` is set; otherwise not used |
+| `--sample-name`                        | coverage         | None                             | Optional String | Adds the sample name to the x-label of the coverage plot                                                                 |
 
 ### General TOML Options and Plot Toggles
 
@@ -300,6 +301,9 @@ cutoff line in the tree layout.
 The coverage figure shows coverage depth at each position along a target. When
 variants are available and `variant_color = "nucleotide"`, an additional bar
 chart shows their observed frequencies.
+
+If a sample name is provided via the optional command-line argument
+`--sample-name`, the x-axis for the coverage plot will feature the sample name.
 
 The bar-chart labels show the consensus allele followed by the minority allele,
 and the number on a bar is its position. For example, a bar labeled `A2G` with

@@ -79,6 +79,9 @@ pub struct HeuristicsCLI {
 /// Command-line arguments specific to individual plot types.
 #[derive(Debug, Parser)]
 pub struct PlotSpecificCLI {
+    /// Name of the IRMA sample
+    #[arg(long)]
+    pub sample_name: Option<String>,
     /// Whether input reads are in paired `fastq` format. Required for pie-style
     /// read-percentage plotting.
     #[arg(long)]

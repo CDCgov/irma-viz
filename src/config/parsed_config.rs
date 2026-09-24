@@ -93,10 +93,10 @@ impl PlotToggles {
 }
 
 /// Holds all config options for coverage plot
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CoverageConfig {
-    #[serde(rename = "variant_color")]
     pub color_option: CoverageColorOption,
+    pub sample_name: Option<String>,
 }
 
 /// Holds all config options for cluster plots, both in TOML and parsed forms
@@ -288,7 +288,10 @@ impl PlotSpecificConfig {
         toggles: &mut PlotToggles,
     ) -> Self {
         // coverage options are only provided via TOML
-        let coverage = toml.coverage;
+        let coverage = CoverageConfig {
+            color_option: toml.coverage.color_option,
+            sample_name: cli.sample_name,
+        };
 
         // heuristics options are only provided via CLI
         let mut enabled_plots = toml.heuristics.enabled_plots;

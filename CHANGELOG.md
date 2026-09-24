@@ -6,6 +6,11 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 
 ## [0.2.2-dev] - TBD
 
+### Added
+
+- Added IRMA sample name to x-axis label on coverage diagram; this is passed via
+  optional CLI argument `--sample-name`
+
 ### Changed
 
 - When `pairingStats` file is now missing (namely for single-ended inputs), the

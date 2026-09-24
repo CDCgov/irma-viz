@@ -5,7 +5,10 @@ use std::fs;
 use serde::Deserialize;
 
 use crate::{
-    config::parsed_config::{ClusterConfig, CoverageConfig, OutputFormat, PlotToggles},
+    config::{
+        CoverageColorOption,
+        parsed_config::{ClusterConfig, OutputFormat, PlotToggles},
+    },
     diagnostics::PlotError,
 };
 
@@ -50,13 +53,20 @@ pub struct PlotSpecificTOML {
     pub heuristics: HeuristicsTOML,
 
     #[serde(rename = "coverage_options")]
-    pub coverage: CoverageConfig,
+    pub coverage: CoverageTOML,
 
     #[serde(rename = "percent_options")]
     pub read_percent: ReadPercentTOML,
 
     #[serde(rename = "cluster_options")]
     pub cluster_config: ClusterConfig,
+}
+
+/// Holds all config options for coverage plot
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub struct CoverageTOML {
+    #[serde(rename = "variant_color")]
+    pub color_option: CoverageColorOption,
 }
 
 /// All configuration options for read-percent plots.
