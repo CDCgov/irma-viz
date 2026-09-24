@@ -253,19 +253,18 @@ fn kuva_dens(data: &[f64], x_lo: f64, x_hi: f64) -> (Vec<Plot>, f64, f64) {
     let n = data.len() as f64;
     let norm = 1.0 / (n * bw * (2.0 * std::f64::consts::PI).sqrt());
 
-    let raw = { kuva::simple_kde(data, bw, SAMPLES) };
+    let raw = kuva::simple_kde(data, bw, SAMPLES);
+    let curve: Vec<(f64, f64)> = raw.into_iter().map(|(x, y)| (x, y * norm)).collect();
 
-    let mut curve = Vec::with_capacity(raw.len());
+    // need to calculate true bounds from `windowed`, original `curve` is still
+    // rendered.
+    let windowed = kuva::simple_kde_reflect(data, bw, SAMPLES, x_lo, x_hi, false, false);
     let mut min_y = f64::INFINITY;
     let mut max_y = f64::NEG_INFINITY;
-
-    for (x, y) in raw {
+    for (_, y) in windowed {
         let y = y * norm;
-        curve.push((x, y));
-        if (x_lo..=x_hi).contains(&x) {
-            min_y = min_y.min(y);
-            max_y = max_y.max(y);
-        }
+        min_y = min_y.min(y);
+        max_y = max_y.max(y);
     }
 
     let ref_line = LinePlot::new()
