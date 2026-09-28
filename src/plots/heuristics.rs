@@ -220,12 +220,7 @@ pub fn plot_heuristics(
     }
 
     let cols = if plots.len() > 1 { 2 } else { 1 };
-    let rows = match plots.len() {
-        1 | 2 => 1,
-        3 | 4 => 2,
-        5 | 6 => 3,
-        _ => unreachable!(),
-    };
+    let rows = plots.len().div_ceil(2);
 
     // Multi-Plot
     let mut scene = Figure::new(rows, cols)
