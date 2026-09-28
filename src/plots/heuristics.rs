@@ -55,25 +55,12 @@ pub fn plot_heuristics(
                 &PlotError::MissingData(String::from("no average quality data found")),
             );
         } else {
-            let (aq_density, min_y, max_y) = kuva_dens(
+            let (aq_density, aq_dens_layout) = density_panel(
                 &average_qualities.data,
-                average_qualities.min,
-                average_qualities.max,
+                (average_qualities.min, average_qualities.max),
+                String::from("Density of average allele quality"),
+                Some(min_aq),
             );
-            let y_span = (max_y - min_y).abs();
-            let buffer = if y_span == 0.0 {
-                (0.02, 1.0)
-            } else {
-                (y_span * 0.02, y_span * 0.02)
-            };
-            let aq_dens_layout = Layout::auto_from_plots(&aq_density)
-                .with_title("Density of average allele quality")
-                .with_x_axis_min(average_qualities.min)
-                .with_x_axis_max(average_qualities.max)
-                .with_y_axis_min(min_y - buffer.0)
-                .with_y_axis_max(max_y + buffer.1)
-                .with_reference_line(ReferenceLine::vertical(min_aq).with_dasharray("none"))
-                .with_show_grid(false);
 
             plots.push(aq_density);
             layouts.push(aq_dens_layout);
@@ -93,21 +80,12 @@ pub fn plot_heuristics(
                 );
             }
         } else {
-            let (limited_aq_density, min_y, max_y) =
-                kuva_dens(&average_qualities.data, average_qualities.min, min_aq);
-            let y_span = (max_y - min_y).abs();
-            let buffer = if y_span == 0.0 {
-                (0.02, 1.0)
-            } else {
-                (y_span * 0.02, y_span * 0.02)
-            };
-            let lim_aq_dens_layout = Layout::auto_from_plots(&limited_aq_density)
-                .with_title(format!("to {min_aq}"))
-                .with_x_axis_min(average_qualities.min)
-                .with_x_axis_max(min_aq)
-                .with_y_axis_min(min_y - buffer.0)
-                .with_y_axis_max(max_y + buffer.1)
-                .with_show_grid(false);
+            let (limited_aq_density, lim_aq_dens_layout) = density_panel(
+                &average_qualities.data,
+                (average_qualities.min, min_aq),
+                format!("to {min_aq}"),
+                None,
+            );
 
             plots.push(limited_aq_density);
             layouts.push(lim_aq_dens_layout);
@@ -123,21 +101,12 @@ pub fn plot_heuristics(
                 &PlotError::MissingData(String::from("no allele frequency data found")),
             );
         } else {
-            let (freq_density, min_y, max_y) = kuva_dens(frequencies, 0.0, 0.1);
-            let y_span = (max_y - min_y).abs();
-            let buffer = if y_span == 0.0 {
-                (0.02, 1.0)
-            } else {
-                (y_span * 0.02, y_span * 0.02)
-            };
-            let freq_dens_layout = Layout::auto_from_plots(&freq_density)
-                .with_title("Density of observed frequency (to 10%)")
-                .with_x_axis_min(0.0)
-                .with_x_axis_max(0.1)
-                .with_y_axis_min(min_y - buffer.0)
-                .with_y_axis_max(max_y + buffer.1)
-                .with_reference_line(ReferenceLine::vertical(min_f).with_dasharray("none"))
-                .with_show_grid(false);
+            let (freq_density, freq_dens_layout) = density_panel(
+                frequencies,
+                (0.0, 0.1),
+                String::from("Density of observed frequency (to 10%)"),
+                Some(min_f),
+            );
 
             plots.push(freq_density);
             layouts.push(freq_dens_layout);
@@ -155,20 +124,8 @@ pub fn plot_heuristics(
                 );
             }
         } else {
-            let (lim_freq_dens, min_y, max_y) = kuva_dens(frequencies, 0.0, min_f);
-            let y_span = (max_y - min_y).abs();
-            let buffer = if y_span == 0.0 {
-                (0.02, 1.0)
-            } else {
-                (y_span * 0.02, y_span * 0.02)
-            };
-            let lim_freq_dens_layout = Layout::auto_from_plots(&lim_freq_dens)
-                .with_title(format!("to {min_f}"))
-                .with_x_axis_min(0.0)
-                .with_x_axis_max(min_f)
-                .with_y_axis_min(min_y - buffer.0)
-                .with_y_axis_max(max_y + buffer.1)
-                .with_show_grid(false);
+            let (lim_freq_dens, lim_freq_dens_layout) =
+                density_panel(frequencies, (0.0, min_f), format!("to {min_f}"), None);
 
             plots.push(lim_freq_dens);
             layouts.push(lim_freq_dens_layout);
@@ -260,6 +217,35 @@ pub fn plot_heuristics(
         filename.as_str(),
         cfg.io_args.output_format,
     )
+}
+
+fn density_panel(
+    data: &[f64],
+    x_bounds: (f64, f64),
+    title: String,
+    reference_x: Option<f64>,
+) -> (Vec<Plot>, Layout) {
+    let (density, min_y, max_y) = kuva_dens(data, x_bounds.0, x_bounds.1);
+    let y_span = (max_y - min_y).abs();
+    let (lower, upper) = if y_span == 0.0 {
+        (0.02, 1.0)
+    } else {
+        (y_span * 0.02, y_span * 0.02)
+    };
+
+    let mut layout = Layout::auto_from_plots(&density)
+        .with_title(title)
+        .with_x_axis_min(x_bounds.0)
+        .with_x_axis_max(x_bounds.1)
+        .with_y_axis_min(min_y - lower)
+        .with_y_axis_max(max_y + upper)
+        .with_show_grid(false);
+
+    if let Some(x) = reference_x {
+        layout = layout.with_reference_line(ReferenceLine::vertical(x).with_dasharray("none"));
+    }
+
+    (density, layout)
 }
 
 /// Builds a Silverman-bandwidth kernel-density curve and y bounds over an x
