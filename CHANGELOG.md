@@ -4,18 +4,23 @@ All notable changes to this project will be documented in this file. The format
 is roughly based on [Keep a Changelog], and this project tries to adhere to
 [Semantic Versioning].
 
-## [0.2.2-dev] - TBD
+## [0.2.2] - 2026-09-28
 
 ### Added
 
 - Added IRMA sample name to x-axis label on coverage diagram; this is passed via
   optional CLI argument `--sample-name`
+- Added a reference line to heuristics density plots
 
 ### Changed
 
 - When `pairingStats` file is now missing (namely for single-ended inputs), the
   `exp. err` bar and reference line in coverage will be omitted rather than
   throwing an error
+- Scaled coverage-depth variant annotation offsets to plot dimensions and
+  reduced variant reference-line width in nucleotide-color mode
+- Added vertical padding to heuristics density plots, including separate upper
+  and lower padding for flat curves
 
 ### Fixed
 
@@ -24,6 +29,9 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 - Improved coverage bar label placement to always be fully inside or outside bar
 - Removed unecessary warnings for no clustermap targets, since it is expected to
   often not see variants for a given sample
+- Fixed coverage bar-position labels when no expected-error bar is present
+- Reduced collisions between nearby variant annotations on coverage-depth plots
+- Fixed clipping of heuristics density plots
 
 ## [0.2.1] - 2026-09-17
 
@@ -83,7 +91,7 @@ is roughly based on [Keep a Changelog], and this project tries to adhere to
 - Initial release. irma-viz can reproduce the original IRMA plots.
 
 <!-- Versions -->
-[0.2.2-dev]: https://github.com/CDCgov/irma-viz/compare/v0.2.1...v0.2.2
+[0.2.2]: https://github.com/CDCgov/irma-viz/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/CDCgov/irma-viz/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/CDCgov/irma-viz/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/CDCgov/irma-viz/compare/v0.1.0...v0.1.1
